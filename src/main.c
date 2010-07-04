@@ -177,6 +177,8 @@ int main(int argc, char **argv)
     handlers_init();
 
     proxy = dbus_g_proxy_new_for_name(dbus_conn, "org.freedesktop.UDisks", "/org/freedesktop/UDisks", "org.freedesktop.UDisks");
+    dbus_g_proxy_call_no_reply(proxy, "EnumerateDevices", G_TYPE_INVALID);
+
     dbus_g_proxy_add_signal(proxy, "DeviceAdded", DBUS_TYPE_G_OBJECT_PATH, G_TYPE_INVALID);
     dbus_g_proxy_add_signal(proxy, "DeviceChanged", DBUS_TYPE_G_OBJECT_PATH, G_TYPE_INVALID);
     dbus_g_proxy_add_signal(proxy, "DeviceRemoved", DBUS_TYPE_G_OBJECT_PATH, G_TYPE_INVALID);
