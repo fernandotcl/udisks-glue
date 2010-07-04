@@ -1,0 +1,17 @@
+Dependencies
+============
+
+Those are the dependencies needed to compile udisks-glue:
+
+* DBus Glib bindings (libdbus-glib-1-dev in Debian)
+* GLib (libglib2.0-dev in Debian)
+* libConfuse (libconfuse-dev in Debian)
+* pkg-config
+
+Installation instructions
+=========================
+
+udisks-glue doesn't use autotools:
+
+$ make PREFIX=/foo/bar
+$ make PREFIX=/foo/bar install

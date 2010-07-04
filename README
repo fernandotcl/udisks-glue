@@ -1,0 +1,75 @@
+Introduction
+============
+
+udisks-glue is a tool that can associate udisks events to user-defined
+actions. In that sense, udisks-glue is almost "glue code"[1], hence the name.
+
+udisks (formely known as DeviceKit-disks) is an abstraction layer on top of
+the Linux disks subsystems that, in conjunction with the other DeviceKit
+subprojects, aims to be a replacement for the now almost defunct HAL project.
+
+Like most other recent Linux desktop frameworks, udisks exposes its API via
+DBus to its clients (often desktop environments). Users wishing to have more
+control about what happens when specific disk-related events often have to use
+a tool like halevt[2] or ivmon[3], which work on top of HAL. Now that HAL is
+no longer being actively developed and most distributions are considering
+dropping support for it, those users will have to migrate to a new tool, and
+udisks-glue might as well fill that gap.
+
+udisks-glue should eventually offer the most useful features found in the
+aforementioned projects. As of now, however, only the most basic functionality
+is available (mounting and unmounting removable media). Contributions are
+welcome.
+
+Note that this project is not affiliated with or endorsed by the udisks
+project.
+
+References:
+
+[1]: http://en.wikipedia.org/wiki/Glue_code
+[2]: http://www.nongnu.org/halevt/
+[3]: http://ivman.sourceforge.net/
+
+
+Configuration
+=============
+
+udisks-glue is configured by a simple configuration file in the canonical
+configuration format found (the libConfuse format). This configuration file
+can be specified on the command line (the -c or --config switch). If no
+configuration file is supplied on the command line, udisks-glue will try the
+following locations in that order:
+
+1. ~/.config/udisks-glue/udisks-glue.conf
+2. ~/.udisks-glue.conf
+3. $PREFIX/etc/udisks-glue.conf
+
+Here's a sample configuration file that should be self-explanatory:
+
+disks {
+    post_insertion_command = "udisks --mount %device_file --mount-options sync"
+    post_mount_command = "mount-notify %device_file %mount_point"
+    post_removal_command = "mount-notify %device_file removed"
+}
+
+The udisks command should be shipped with your distribution, make sure to read
+its manual page for details. mount-notify could be a script that uses whatever
+means to notify you about what's going on. You might want to display a popup
+of some sort or update some widget on your desktop.
+
+You probably want to run this software as your current user as opposed to
+running it as root, so that you can have access to the directories mounted
+with the udisks command, since udisks can use PolicyKit to mount the drive
+with your credentials.
+
+
+Future goals
+============
+
+Our main goal is to expand the current functionality in order to provide a
+decent replacement for disk-related use of halevt. Eventually, if it turns out
+to be easy enough, we might support more events related to DeviceKit too.
+
+A short-term goal is to provide support for optical devices and allow for more
+complex configuration, filtering devices according to expressions that match
+certain characteristics.
