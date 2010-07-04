@@ -110,8 +110,8 @@ static int parse_config(int argc, char **argv, int *rc)
         else if (file_exists("~/.udisks-glue.conf")) {
             config_file = "~/.udisks-glue.conf";
         }
-        else if (file_exists(PREFIX "/etc/udisks-glue.conf")) {
-            config_file = PREFIX "/etc/udisks-glue.conf";
+        else if (file_exists(SYSCONFDIR "/udisks-glue.conf")) {
+            config_file = SYSCONFDIR "/udisks-glue.conf";
         }
         else {
             fprintf(stderr, "Unable to find the configuration file\n");

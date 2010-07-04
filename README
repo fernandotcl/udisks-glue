@@ -42,7 +42,7 @@ following locations in that order:
 
 1. ~/.config/udisks-glue/udisks-glue.conf
 2. ~/.udisks-glue.conf
-3. $PREFIX/etc/udisks-glue.conf
+3. $SYSCONFDIR/udisks-glue.conf
 
 Here's a sample configuration file that should be self-explanatory:
 
