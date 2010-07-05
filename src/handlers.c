@@ -8,44 +8,27 @@
  */
 
 #include <dbus/dbus-glib.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <confuse.h>
 #include <glib.h>
-#include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
+#include "dbus_constants.h"
 #include "globals.h"
+#include "props.h"
+#include "util.h"
 
-#define GET_PROPERTY_PREAMBLE(error_val) \
-    GValue value = {0, }; \
+#define RETURN_IF_DEVICE_PROPERTY(name) \
     do { \
-        GError *error = NULL; \
-        if (!dbus_g_proxy_call(props_proxy, "Get", &error, \
-                    G_TYPE_STRING, "org.freedesktop.UDisks.Device", \
-                    G_TYPE_STRING, name, \
-                    G_TYPE_INVALID, \
-                    G_TYPE_VALUE, &value, \
-                    G_TYPE_INVALID)) { \
-            g_printerr("Unable to get property \"%s\": %s\n", name, error->message); \
-            g_error_free(error); \
-            return error_val; \
-        } \
-    } while (0)
-
-#define RETURN_IF_PROPERTY(name) \
-    do { \
-        int res = get_bool_property(props_proxy, name); \
+        int res = get_bool_property(props_proxy, name, DBUS_INTERFACE_UDISKS_DEVICE); \
         if (res != 0) { \
             g_object_unref(props_proxy); \
             return; \
         } \
     } while (0)
 
-#define RETURN_IF_NOT_PROPERTY(name) \
+#define RETURN_IF_NOT_DEVICE_PROPERTY(name) \
     do { \
-        int res = get_bool_property(props_proxy, name); \
+        int res = get_bool_property(props_proxy, name, DBUS_INTERFACE_UDISKS_DEVICE); \
         if (res != 1) { \
             g_object_unref(props_proxy); \
             return; \
@@ -54,6 +37,23 @@
 
 static GSList *pending_mount_devices = NULL;
 static GHashTable *mounted_devices = NULL;
+
+static void run_device_command(const char *config_key, const char *device_file, const char *mount_point)
+{
+    const char *command = cfg_getstr(cfg_disks, config_key);
+    if (!command) return;
+
+    gchar *expanded = str_replace((gchar *)command, "%device_file", (gchar *)device_file);
+    if (mount_point) {
+        gchar *tmp = str_replace((gchar *)expanded, "%mount_point", (gchar *)mount_point);
+        g_free(expanded);
+        expanded = tmp;
+    }
+
+    g_print("Running command: %s\n", expanded);
+    run_command((const char *)expanded);
+    g_free(expanded);
+}
 
 void handlers_init()
 {
@@ -67,80 +67,14 @@ void handlers_free()
     g_slist_free(pending_mount_devices);
 }
 
-static gchar *replace_strings(gchar *string, gchar *search, gchar *replacement)
-{
-    gchar *str;
-    gchar **arr = g_strsplit(string, search, -1);
-    if (arr != NULL && arr[0] != NULL)
-        str = g_strjoinv(replacement, arr);
-    else
-        str = g_strdup(string);
-
-    g_strfreev(arr);
-    return str;
-}
-
-static void run_command(const char *config_key, const char *device_file, const char *mount_point)
-{
-    const char *command = cfg_getstr(cfg_disks, config_key);
-    if (!command) return;
-
-    gchar *expanded = replace_strings((gchar *)command, "%device_file", (gchar *)device_file);
-    if (mount_point) {
-        gchar *tmp = replace_strings((gchar *)expanded, "%mount_point", (gchar *)mount_point);
-        g_free(expanded);
-        expanded = tmp;
-    }
-
-    g_print("Running command: %s\n", expanded);
-
-    if (fork() == 0) {
-        if (fork() == 0) {
-            static const char *shell = NULL;
-            if (!shell) {
-                shell = getenv("SHELL");
-                if (!shell)
-                    shell = "/bin/sh";
-            }
-            execl(shell, shell, "-c", expanded, NULL);
-        }
-        exit(0);
-    }
-    wait(NULL);
-}
-
-static int get_bool_property(DBusGProxy *props_proxy, const char *name)
-{
-    GET_PROPERTY_PREAMBLE(-1);
-    int res = g_value_get_boolean(&value) ? 1 : 0;
-    g_value_unset(&value);
-    return res;
-}
-
-static gchar *get_string_property(DBusGProxy *props_proxy, const char *name)
-{
-    GET_PROPERTY_PREAMBLE(NULL);
-    gchar *res = g_strdup(g_value_get_string(&value));
-    g_value_unset(&value);
-    return res;
-}
-
-static gchar **get_stringv_property(DBusGProxy *props_proxy, const char *name)
-{
-    GET_PROPERTY_PREAMBLE(NULL);
-    gchar **res = g_strdupv(g_value_get_boxed(&value));
-    g_value_unset(&value);
-    return res;
-}
-
 void device_added_signal_handler(DBusGProxy *proxy, const char *object_path, gpointer user_data)
 {
-    DBusGProxy *props_proxy = dbus_g_proxy_new_for_name(dbus_conn, "org.freedesktop.UDisks", object_path, "org.freedesktop.DBus.Properties");
-    RETURN_IF_PROPERTY("DeviceIsSystemInternal");
-    RETURN_IF_PROPERTY("DeviceIsMounted");
-    RETURN_IF_PROPERTY("DeviceIsOpticalDisc");
+    DBusGProxy *props_proxy = dbus_g_proxy_new_for_name(dbus_conn, DBUS_COMMON_NAME_UDISKS, object_path, DBUS_INTERFACE_DBUS_PROPERTIES);
+    RETURN_IF_DEVICE_PROPERTY("DeviceIsSystemInternal");
+    RETURN_IF_DEVICE_PROPERTY("DeviceIsMounted");
+    RETURN_IF_DEVICE_PROPERTY("DeviceIsOpticalDisc");
 
-    gchar *device_file = get_string_property(props_proxy, "DeviceFile");
+    gchar *device_file = get_string_property(props_proxy, "DeviceFile", DBUS_INTERFACE_UDISKS_DEVICE);
     if (!device_file) return;
 
     g_hash_table_remove(mounted_devices, object_path);
@@ -149,7 +83,7 @@ void device_added_signal_handler(DBusGProxy *proxy, const char *object_path, gpo
         pending_mount_devices = g_slist_prepend(pending_mount_devices, g_strdup(object_path));
 
     g_print("Device added: %s\n", device_file);
-    run_command("post_insertion_command", device_file, NULL);
+    run_device_command("post_insertion_command", device_file, NULL);
 
     g_free(device_file);
     g_object_unref(props_proxy);
@@ -162,13 +96,13 @@ void device_changed_signal_handler(DBusGProxy *proxy, const char *object_path, g
 
     if (g_hash_table_lookup(mounted_devices, object_path)) return;
 
-    DBusGProxy *props_proxy = dbus_g_proxy_new_for_name(dbus_conn, "org.freedesktop.UDisks", object_path, "org.freedesktop.DBus.Properties");
-    RETURN_IF_NOT_PROPERTY("DeviceIsMounted");
+    DBusGProxy *props_proxy = dbus_g_proxy_new_for_name(dbus_conn, DBUS_COMMON_NAME_UDISKS, object_path, DBUS_INTERFACE_DBUS_PROPERTIES);
+    RETURN_IF_NOT_DEVICE_PROPERTY("DeviceIsMounted");
 
-    gchar *device_file = get_string_property(props_proxy, "DeviceFile");
+    gchar *device_file = get_string_property(props_proxy, "DeviceFile", DBUS_INTERFACE_UDISKS_DEVICE);
     if (!device_file) return;
 
-    gchar **mount_paths = get_stringv_property(props_proxy, "DeviceMountPaths");
+    gchar **mount_paths = get_stringv_property(props_proxy, "DeviceMountPaths", DBUS_INTERFACE_UDISKS_DEVICE);
     if (!mount_paths) return;
     if (!*mount_paths) {
         g_debug("Device %s was mounted, but not anymore", device_file);
@@ -182,7 +116,7 @@ void device_changed_signal_handler(DBusGProxy *proxy, const char *object_path, g
     g_hash_table_insert(mounted_devices, g_strdup(object_path), g_strdup(device_file));
 
     g_print("Device mounted: %s on %s\n", device_file, *mount_paths);
-    run_command("post_mount_command", device_file, *mount_paths);
+    run_device_command("post_mount_command", device_file, *mount_paths);
 
     g_strfreev(mount_paths);
     g_free(device_file);
@@ -201,7 +135,7 @@ void device_removed_signal_handler(DBusGProxy *proxy, const char *object_path, g
     if (!device_file) return;
 
     g_print("Device removed: %s\n", device_file);
-    run_command("post_removal_command", device_file, NULL);
+    run_device_command("post_removal_command", device_file, NULL);
 
     g_hash_table_remove(mounted_devices, object_path);
 }

@@ -8,19 +8,16 @@
  */
 
 #include <dbus/dbus-glib.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <confuse.h>
-#include <fcntl.h>
 #include <getopt.h>
 #include <glib.h>
-#include <glob.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 
+#include "dbus_constants.h"
 #include "handlers.h"
+#include "util.h"
 
 DBusGConnection *dbus_conn = NULL;
 cfg_t *cfg = NULL, *cfg_disks = NULL;
@@ -33,42 +30,12 @@ static void signal_handler(int sig)
         g_main_loop_quit(loop);
 }
 
-static void do_daemonize()
-{
-    pid_t pid;
-    if ((pid = fork()) != 0)
-        exit(0);
- 
-    umask(0);
-    setsid();
-    chdir("/");
-
-    for (int i = 0; i < 3; ++i)
-        close(i);
- 
-    open("/dev/null", O_RDONLY);
-    open("/dev/null", O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
-    open("/dev/null", O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
-}
-
 static void print_usage(FILE *out)
 {
     fprintf(out, "\
 Usage: \n\
     udisks-glue [--foreground] [--config file]\n\
     udisks-glue [--help]\n");
-}
-
-static int file_exists(const char *path)
-{
-    static glob_t glob_buffer;
-    if (glob(path, GLOB_NOCHECK | GLOB_TILDE, NULL, &glob_buffer) != 0)
-        return 0;
-
-    const char *expanded = glob_buffer.gl_pathc > 0 ? glob_buffer.gl_pathv[0] : path;
-
-    struct stat s;
-    return stat(expanded, &s) == -1 ? 0 : 1;
 }
 
 static int parse_config(int argc, char **argv, int *rc)
@@ -80,7 +47,7 @@ static int parse_config(int argc, char **argv, int *rc)
         { NULL, 0, 0, 0 }
     };
 
-    int daemonize = 1;
+    int do_daemonize = 1;
     const char *config_file = NULL;
 
     int opt, option_index = 0;
@@ -90,7 +57,7 @@ static int parse_config(int argc, char **argv, int *rc)
                 config_file = optarg;
                 break;
             case 'f':
-                daemonize = 0;
+                do_daemonize = 0;
                 break;
             case 'h':
                 print_usage(stdout);
@@ -145,8 +112,8 @@ static int parse_config(int argc, char **argv, int *rc)
         return 1;
     }
 
-    if (daemonize)
-        do_daemonize();
+    if (do_daemonize)
+        daemonize();
 
     return 0;
 }
@@ -176,7 +143,7 @@ int main(int argc, char **argv)
 
     handlers_init();
 
-    proxy = dbus_g_proxy_new_for_name(dbus_conn, "org.freedesktop.UDisks", "/org/freedesktop/UDisks", "org.freedesktop.UDisks");
+    proxy = dbus_g_proxy_new_for_name(dbus_conn, DBUS_COMMON_NAME_UDISKS, DBUS_OBJECT_PATH_UDISKS_ROOT, DBUS_INTERFACE_UDISKS);
     dbus_g_proxy_call_no_reply(proxy, "EnumerateDevices", G_TYPE_INVALID);
 
     dbus_g_proxy_add_signal(proxy, "DeviceAdded", DBUS_TYPE_G_OBJECT_PATH, G_TYPE_INVALID);
