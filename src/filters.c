@@ -50,10 +50,10 @@ typedef struct {
     GSList *parameters;
 } filter;
 
-typedef struct {
+struct candidate_ {
     filter *f;
     const char *commands[FILTER_COMMAND_LAST];
-} candidate;
+};
 
 static candidate *default_candidate = NULL;
 static GSList *candidates = NULL;
@@ -122,7 +122,7 @@ int filters_init(cfg_t *cfg)
         filter *f = filter_create();
         filters = g_slist_prepend(filters, f);
 
-        f->name = cfg_title(cfg);
+        f->name = cfg_title(sec);
         FILTER_LINK(removable, device_is_removable, bool);
         FILTER_LINK(read_only, device_is_read_only, bool);
         FILTER_LINK(optical, device_is_optical_disc, bool);
@@ -131,13 +131,14 @@ int filters_init(cfg_t *cfg)
 
     index = cfg_size(cfg, "match");
     while (index--) {
-        cfg_t *sec = cfg_getnsec(cfg, "filter", index);
-        const char *title = cfg_title(cfg);
+        cfg_t *sec = cfg_getnsec(cfg, "match", index);
+        const char *title = cfg_title(sec);
 
         filter *f = NULL;
         for (GSList *entry = filters; entry; entry = g_slist_next(entry)) {
-            if (!strcmp(((filter *)(entry->data))->name, title)) {
-                f = entry->data;
+            filter *f2 = (filter *)entry->data;
+            if (!strcmp(f2->name, title)) {
+                f = f2;
                 break;
             }
         }
@@ -173,8 +174,10 @@ void filters_free()
     g_slist_free(filters);
 }
 
-const char *filters_get_command(filter_info *info)
+const candidate *filters_get_candidate(filter_info *info)
 {
+    // Look at the configured candidates for an entry that matches the filters
+    // and sets the requested command
     for (GSList *entry = candidates; entry; entry = g_slist_next(entry)) {
         candidate *c = (candidate *)entry->data;
         int matched = 1;
@@ -185,15 +188,20 @@ const char *filters_get_command(filter_info *info)
                 break;
             }
         }
-        if (matched) {
-            const char *command = c->commands[info->requested_command];
-            if (command)
-                return command;
-        }
+        if (matched && c->commands[info->requested_command]) return c;
     }
 
-    if (default_candidate)
-        return default_candidate->commands[info->requested_command];
+    // Try the default entry
+    return default_candidate;
+}
 
-    return NULL;
+const char *filters_get_command(filter_info *info)
+{
+    const candidate *c = filters_get_candidate(info);
+    return c ? c->commands[info->requested_command] : NULL;
+}
+
+const char *filters_get_command_in_candidate(filter_info *info, const candidate *c)
+{
+    return c->commands[info->requested_command];
 }

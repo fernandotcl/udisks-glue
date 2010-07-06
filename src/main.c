@@ -16,13 +16,14 @@
 #include <stdlib.h>
 
 #include "dbus_constants.h"
+#include "filters.h"
 #include "handlers.h"
 #include "util.h"
 
 DBusGConnection *dbus_conn = NULL;
-cfg_t *cfg = NULL, *cfg_disks = NULL;
 
 static GMainLoop *loop = NULL;
+static cfg_t *cfg = NULL;
 
 static void signal_handler(int sig)
 {
@@ -87,7 +88,7 @@ static int parse_config(int argc, char **argv, int *rc)
         }
     }
 
-    cfg_opt_t disks_opts[] = {
+    cfg_opt_t match_opts[] = {
         CFG_STR("post_insertion_command", NULL, CFGF_NONE),
         CFG_STR("post_mount_command", NULL, CFGF_NONE),
         CFG_STR("post_removal_command", NULL, CFGF_NONE),
@@ -95,19 +96,14 @@ static int parse_config(int argc, char **argv, int *rc)
     };
 
     cfg_opt_t opts[] = {
-        CFG_SEC("disks", disks_opts, CFGF_NONE),
+        CFG_SEC("filter", filters_get_cfg_opts(), CFGF_MULTI | CFGF_TITLE),
+        CFG_SEC("match", match_opts, CFGF_MULTI | CFGF_TITLE),
+        CFG_SEC("default", match_opts, CFGF_NONE),
         CFG_END()
     };
 
     cfg = cfg_init(opts, CFGF_NONE);
     if (cfg_parse(cfg, config_file) == CFG_PARSE_ERROR) {
-        *rc = EXIT_FAILURE;
-        return 1;
-    }
-
-    cfg_disks = cfg_getsec(cfg, "disks");
-    if (cfg_disks == NULL) {
-        fprintf(stderr, "Missing disks section");
         *rc = EXIT_FAILURE;
         return 1;
     }
@@ -123,6 +119,9 @@ int main(int argc, char **argv)
     int rc;
     if (parse_config(argc, argv, &rc))
         return rc;
+
+    if (!filters_init(cfg))
+        return EXIT_FAILURE;
 
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
@@ -163,5 +162,6 @@ cleanup:
     if (dbus_conn) dbus_g_connection_unref(dbus_conn);
     g_main_loop_unref(loop);
     handlers_free();
+    filters_free();
     return rc;
 }
