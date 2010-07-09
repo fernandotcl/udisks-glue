@@ -17,31 +17,23 @@
 #include "props.h"
 #include "util.h"
 
-#define RETURN_IF_DEVICE_PROPERTY(name) \
-    do { \
-        int res = get_bool_property(props_proxy, name, DBUS_INTERFACE_UDISKS_DEVICE); \
-        if (res != BOOL_PROP_FALSE) { \
-            g_object_unref(props_proxy); \
-            return; \
-        } \
-    } while (0)
-
-#define RETURN_IF_NOT_DEVICE_PROPERTY(name) \
-    do { \
-        int res = get_bool_property(props_proxy, name, DBUS_INTERFACE_UDISKS_DEVICE); \
-        if (res != BOOL_PROP_TRUE) { \
-            g_object_unref(props_proxy); \
-            return; \
-        } \
-    } while (0)
-
-#define GET_BOOL_DEVICE_PROPERTY(name, var) \
+#define GET_BOOL_PROPERTY_RETURN(name, var) \
     int var; \
     do { \
         var = get_bool_property(props_proxy, name, DBUS_INTERFACE_UDISKS_DEVICE); \
         if (var == BOOL_PROP_ERROR) { \
             g_object_unref(props_proxy); \
             return; \
+        } \
+    } while (0)
+
+#define GET_BOOL_PROPERTY_CONTINUE(name, var) \
+    int var; \
+    do { \
+        var = get_bool_property(props_proxy, name, DBUS_INTERFACE_UDISKS_DEVICE); \
+        if (var == BOOL_PROP_ERROR) { \
+            g_object_unref(props_proxy); \
+            continue; \
         } \
     } while (0)
 
@@ -127,12 +119,76 @@ static gchar *get_mount_point(DBusGProxy *props_proxy)
     return g_strdup(*mount_paths);
 }
 
-void handlers_init()
+static void load_devices(DBusGProxy *proxy)
+{
+    // Get a list of devices
+    GError *error;
+    GPtrArray *devices;
+    gboolean res = dbus_g_proxy_call(proxy, "EnumerateDevices", &error,
+            G_TYPE_INVALID,
+            dbus_g_type_get_collection("GPtrArray", DBUS_TYPE_G_OBJECT_PATH),
+            &devices,
+            G_TYPE_INVALID);
+    if (!res) {
+        g_printerr("Unable to enumerate the devices: %s\n", error->message);
+        g_error_free(error);
+        return;
+    }
+
+    for (int i = 0; i < devices->len; ++i) {
+        // Get the properties proxy
+        char *object_path = devices->pdata[i];
+        DBusGProxy *props_proxy = dbus_g_proxy_new_for_name(dbus_conn, DBUS_COMMON_NAME_UDISKS, object_path, DBUS_INTERFACE_DBUS_PROPERTIES);
+
+        // Skip system internal devices
+        int is_system_internal = get_bool_property(props_proxy, "DeviceIsSystemInternal", DBUS_INTERFACE_UDISKS_DEVICE);
+        if (is_system_internal != BOOL_PROP_FALSE) {
+            g_object_unref(props_proxy);
+            continue;
+        }
+
+        // Get some properties
+        GET_BOOL_PROPERTY_CONTINUE("DeviceIsMediaAvailable", is_media_available);
+        GET_BOOL_PROPERTY_CONTINUE("DeviceIsMounted", is_mounted);
+
+        // Get the device file
+        gchar *device_file = get_string_property(props_proxy, "DeviceFile", DBUS_INTERFACE_UDISKS_DEVICE);
+        if (!device_file) {
+            g_object_unref(props_proxy);
+            continue;
+        }
+
+        // Create and insert the new tracked object
+        tracked_object *tobj = g_malloc0(sizeof(tracked_object));
+        if (!tobj) {
+            g_printerr("g_malloc failed\n");
+            g_object_unref(props_proxy);
+            g_free(device_file);
+            return;
+        }
+        g_hash_table_insert(tracked_objects, g_strdup(object_path), tobj);
+
+        // Configure the tracked object
+        tobj->device_file = device_file;
+        if (is_mounted)
+            tobj->status = TRACKED_OBJECT_STATUS_MOUNTED;
+        else if (is_media_available)
+            tobj->status = TRACKED_OBJECT_STATUS_INSERTED;
+        else
+            tobj->status = TRACKED_OBJECT_STATUS_NO_MEDIA;
+    }
+
+    g_ptr_array_foreach(devices, (GFunc)g_free, NULL);
+    g_ptr_array_free(devices, TRUE);
+}
+
+void handlers_init(DBusGProxy *proxy)
 {
     // Create the list of tracked objects
     tracked_objects = g_hash_table_new_full(&g_str_hash, &g_str_equal, &g_free, (GDestroyNotify)&free_tracked_object);
 
-    // TODO: Populate the list of tracked objects with the removable drives that are empty
+    // Load it with the devices that are already present in the system
+    load_devices(proxy);
 }
 
 void handlers_free()
@@ -145,9 +201,17 @@ void device_added_signal_handler(DBusGProxy *proxy, const char *object_path, gpo
     // Remove this object in case something funny is going on
     g_hash_table_remove(tracked_objects, object_path);
 
-    // Skip internal devices
+    // Skip system internal devices
     DBusGProxy *props_proxy = dbus_g_proxy_new_for_name(dbus_conn, DBUS_COMMON_NAME_UDISKS, object_path, DBUS_INTERFACE_DBUS_PROPERTIES);
-    RETURN_IF_DEVICE_PROPERTY("DeviceIsSystemInternal");
+    GET_BOOL_PROPERTY_RETURN("DeviceIsSystemInternal", is_system_internal);
+    if (is_system_internal != BOOL_PROP_FALSE) {
+        g_object_unref(props_proxy);
+        return;
+    }
+
+    // Get some properties
+    GET_BOOL_PROPERTY_RETURN("DeviceIsRemovable", is_removable);
+    GET_BOOL_PROPERTY_RETURN("DeviceIsMediaAvailable", is_media_available);
 
     // Get the device file
     gchar *device_file = get_string_property(props_proxy, "DeviceFile", DBUS_INTERFACE_UDISKS_DEVICE);
@@ -168,7 +232,6 @@ void device_added_signal_handler(DBusGProxy *proxy, const char *object_path, gpo
     g_hash_table_insert(tracked_objects, g_strdup(object_path), tobj);
 
     // If it's not a removable device, run the post-insertion procedure directly
-    GET_BOOL_DEVICE_PROPERTY("DeviceIsRemovable", is_removable);
     if (!is_removable) {
         tobj->status = TRACKED_OBJECT_STATUS_INSERTED;
         post_insertion_procedure(tobj, props_proxy);
@@ -177,7 +240,6 @@ void device_added_signal_handler(DBusGProxy *proxy, const char *object_path, gpo
     }
 
     // Run the post-insertion procedure if it has media
-    GET_BOOL_DEVICE_PROPERTY("DeviceIsMediaAvailable", is_media_available);
     if (is_media_available) {
         tobj->status = TRACKED_OBJECT_STATUS_INSERTED;
         post_insertion_procedure(tobj, props_proxy);
@@ -198,8 +260,8 @@ void device_changed_signal_handler(DBusGProxy *proxy, const char *object_path, g
 
     // Get some properties
     DBusGProxy *props_proxy = dbus_g_proxy_new_for_name(dbus_conn, DBUS_COMMON_NAME_UDISKS, object_path, DBUS_INTERFACE_DBUS_PROPERTIES);
-    GET_BOOL_DEVICE_PROPERTY("DeviceIsMounted", is_mounted);
-    GET_BOOL_DEVICE_PROPERTY("DeviceIsMediaAvailable", is_media_available);
+    GET_BOOL_PROPERTY_RETURN("DeviceIsMounted", is_mounted);
+    GET_BOOL_PROPERTY_RETURN("DeviceIsMediaAvailable", is_media_available);
 
     switch (tobj->status)
     {
@@ -219,6 +281,10 @@ void device_changed_signal_handler(DBusGProxy *proxy, const char *object_path, g
                     tobj->status = TRACKED_OBJECT_STATUS_MOUNTED;
                     post_mount_procedure(tobj);
                 }
+            }
+            else if (!is_media_available) {
+                tobj->status = TRACKED_OBJECT_STATUS_NO_MEDIA;
+                post_removal_procedure(tobj);
             }
             break;
 

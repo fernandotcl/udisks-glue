@@ -140,10 +140,8 @@ int main(int argc, char **argv)
         goto cleanup;
     }
 
-    handlers_init();
-
     proxy = dbus_g_proxy_new_for_name(dbus_conn, DBUS_COMMON_NAME_UDISKS, DBUS_OBJECT_PATH_UDISKS_ROOT, DBUS_INTERFACE_UDISKS);
-    dbus_g_proxy_call_no_reply(proxy, "EnumerateDevices", G_TYPE_INVALID);
+    handlers_init(proxy);
 
     dbus_g_proxy_add_signal(proxy, "DeviceAdded", DBUS_TYPE_G_OBJECT_PATH, G_TYPE_INVALID);
     dbus_g_proxy_add_signal(proxy, "DeviceChanged", DBUS_TYPE_G_OBJECT_PATH, G_TYPE_INVALID);
