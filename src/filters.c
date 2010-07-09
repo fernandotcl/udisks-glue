@@ -50,23 +50,18 @@ typedef struct {
     GSList *parameters;
 } filter;
 
-struct candidate_ {
+typedef struct {
     filter *f;
     const char *commands[FILTER_COMMAND_LAST];
-};
+} candidate;
 
 static candidate *default_candidate = NULL;
 static GSList *candidates = NULL;
 static GSList *filters = NULL;
 
-static int filter_device_is_optical_disc(filter_info *info, void *value)
-{
-    int wanted_value = (cfg_bool_t)value ? 1 : 0;
-    return info->device_is_optical == wanted_value;
-}
-
 DEFINE_BOOL_PROPERTY(device_is_removable, "DeviceIsRemovable")
 DEFINE_BOOL_PROPERTY(device_is_read_only, "DeviceIsReadOnly")
+DEFINE_BOOL_PROPERTY(device_is_optical_disc, "DeviceIsOpticalDisc")
 DEFINE_BOOL_PROPERTY(device_optical_disc_is_closed, "OpticalDiscIsClosed")
 
 static filter *filter_create()
@@ -174,7 +169,7 @@ void filters_free()
     g_slist_free(filters);
 }
 
-const candidate *filters_get_candidate(filter_info *info)
+static const candidate *filters_get_candidate(filter_info *info)
 {
     // Look at the configured candidates for an entry that matches the filters
     // and sets the requested command
@@ -199,9 +194,4 @@ const char *filters_get_command(filter_info *info)
 {
     const candidate *c = filters_get_candidate(info);
     return c ? c->commands[info->requested_command] : NULL;
-}
-
-const char *filters_get_command_in_candidate(filter_info *info, const candidate *c)
-{
-    return c->commands[info->requested_command];
 }
