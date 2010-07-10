@@ -7,22 +7,28 @@
  *
  */
 
+#ifndef FILTERS_H
+#define FILTERS_H
+
 #include <dbus/dbus-glib.h>
 #include <confuse.h>
 
-typedef struct {
-    DBusGProxy *proxy;
-    enum {
-        FILTER_COMMAND_POST_INSERTION = 0,
-        FILTER_COMMAND_POST_MOUNT,
-        FILTER_COMMAND_POST_REMOVAL,
-        FILTER_COMMAND_LAST
-    } requested_command;
-} filter_info;
+typedef enum {
+    FILTER_COMMAND_POST_INSERTION = 0,
+    FILTER_COMMAND_POST_MOUNT,
+    FILTER_COMMAND_POST_REMOVAL,
+    FILTER_COMMAND_LAST
+} filter_command;
+
+typedef struct filter_cache_ filter_cache;
 
 cfg_opt_t *filters_get_cfg_opts();
 
 int filters_init(cfg_t *cfg);
 void filters_free();
 
-const char *filters_get_command(filter_info *info);
+filter_cache *filter_cache_create();
+void filter_cache_free(filter_cache *cache);
+const char *filters_get_command(DBusGProxy *proxy, filter_command command, filter_cache *cache);
+
+#endif

@@ -64,12 +64,11 @@ static void post_insertion_procedure(tracked_object *tobj, DBusGProxy *props_pro
     g_print("Device file %s inserted\n", tobj->device_file);
 
     // Look for the commands
-    filter_info info = { props_proxy, FILTER_COMMAND_POST_INSERTION };
-    const char *command = filters_get_command(&info);
-    info.requested_command = FILTER_COMMAND_POST_MOUNT;
-    tobj->post_mount_command = filters_get_command(&info);
-    info.requested_command = FILTER_COMMAND_POST_REMOVAL;
-    tobj->post_removal_command = filters_get_command(&info);
+    filter_cache *cache = filter_cache_create();
+    const char *command = filters_get_command(props_proxy, FILTER_COMMAND_POST_INSERTION, cache);
+    tobj->post_mount_command = filters_get_command(props_proxy, FILTER_COMMAND_POST_MOUNT, cache);
+    tobj->post_removal_command = filters_get_command(props_proxy, FILTER_COMMAND_POST_REMOVAL, cache);
+    filter_cache_free(cache);
 
     // Run the post-insertion command
     if (command) {
