@@ -71,7 +71,7 @@ static void post_insertion_procedure(tracked_object *tobj, DBusGProxy *props_pro
     filter_cache_free(cache);
 
     // Run the post-insertion command
-    if (command) {
+    if (command && command[0]) {
         gchar *expanded = str_replace((gchar *)command, "%device_file", tobj->device_file);
         run_command(expanded);
         g_free(expanded);
@@ -83,7 +83,7 @@ static void post_mount_procedure(tracked_object *tobj)
     g_print("Device file %s mounted at %s\n", tobj->device_file, tobj->mount_point);
 
     // Run the post-mount command
-    if (tobj->post_mount_command) {
+    if (tobj->post_mount_command && tobj->post_mount_command[0]) {
         gchar *expanded_tmp = str_replace((gchar *)tobj->post_mount_command, "%device_file", tobj->device_file);
         gchar *expanded = str_replace(expanded_tmp, "%mount_point", tobj->mount_point);
         g_free(expanded_tmp);
@@ -97,7 +97,7 @@ static void post_removal_procedure(tracked_object *tobj)
     g_print("Device file %s removed\n", tobj->device_file);
 
     // Run the post-removal command
-    if (tobj->post_removal_command) {
+    if (tobj->post_removal_command && tobj->post_removal_command[0]) {
         gchar *expanded = str_replace((gchar *)tobj->post_removal_command, "%device_file", tobj->device_file);
         run_command(expanded);
         g_free(expanded);
