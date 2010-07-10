@@ -1,3 +1,12 @@
+/*
+ * This file is part of udisks-glue.
+ *
+ * © 2010 Fernando Tarlá Cardoso Lemos
+ *
+ * Refer to the LICENSE file for licensing information.
+ *
+ */
+
 #ifndef DBUS_CONSTANTS_H
 #define DBUS_CONSTANTS_H
 
