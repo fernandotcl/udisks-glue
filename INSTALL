@@ -8,6 +8,10 @@ Those are the dependencies needed to compile udisks-glue:
 * libConfuse (libconfuse-dev in Debian)
 * pkg-config
 
+If you want to compile the manual pages, you'll need something compatible with
+nroff (groff-base in Debian works great).
+
+
 Installation instructions
 =========================
 
