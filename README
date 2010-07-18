@@ -34,74 +34,7 @@ References:
 Configuration
 =============
 
-udisks-glue is configured by a simple configuration file in the canonical
-configuration format found (the libConfuse format). This configuration file
-can be specified on the command line (the -c or --config switch). If no
-configuration file is supplied on the command line, udisks-glue will try the
-following locations in that order:
-
-1. ~/.config/udisks-glue/udisks-glue.conf
-2. ~/.udisks-glue.conf
-3. $SYSCONFDIR/udisks-glue.conf
-
-Here's a sample configuration file that should be self-explanatory:
-
-#
-# Filters
-#
-
-filter disks {
-    optical = false
-}
-
-filter burnable {
-    optical = true
-    disc_closed = false
-}
-
-filter optical {
-    optical = true
-}
-
-#
-# The default entry
-#
-
-default {
-    post_mount_command = "mount-notify %device_file %mount_point"
-    post_removal_command = "mount-notify %device_file removed"
-}
-
-#
-# Additional entries
-#
-
-match disks {
-    post_insertion_command = "udisks --mount %device_file --mount-options sync"
-}
-
-match burnable {
-    post_insertion_command = "k3b %device_file"
-    post_mount_command = ""
-}
-
-match optical {
-    post_insertion_command = "udisks --mount %device_file --mount-options ro"
-}
-
-The udisks command should be shipped with your distribution, make sure to read
-its manual page for details. mount-notify could be a script that uses whatever
-means to notify you about what's going on. You might want to display a popup
-of some sort or update some widget on your desktop.
-
-Note that the filters are parsed in the order they are specified, so you want
-to have the most specific filters specified first (otherwise the less specific
-filters will match).
-
-You probably want to run this software as your current user as opposed to
-running it as root, so that you can have access to the directories mounted
-with the udisks command, since udisks can use PolicyKit to mount the drive
-with your credentials.
+For configuration options and examples, please refer to udisks-glue(1).
 
 
 Future goals

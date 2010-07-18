@@ -1,3 +1,5 @@
+VERSION=$(shell git describe --tags --abbrev=0)
+
 INSTALL=install
 PREFIX=/usr
 ifeq ($(PREFIX),/usr)
@@ -31,6 +33,10 @@ src/%.o: src/%.c $(HEADERS)
 	@echo "CC $<" && \
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+$(BIN).1: man/$(BIN).1.roff
+	@echo "NROFF $<" && \
+	nroff -t man $< >$(BIN).1
+
 install: all
 	$(INSTALL) -d -m 0755 $(DESTDIR)$(PREFIX)/bin
 	$(INSTALL) -m 0755 $(BIN) $(DESTDIR)$(PREFIX)/bin
@@ -41,4 +47,13 @@ clean:
 
 distclean: clean
 	@echo 'DISTCLEAN' && \
-	rm -f $(BIN)
+	rm -f $(BIN) $(BIN).1
+
+dist: distclean $(BIN).1
+	rm -rf $(BIN)-$(VERSION)
+	mkdir $(BIN)-$(VERSION)
+	cp INSTALL LICENSE Makefile README $(BIN)-$(VERSION)
+	cp -r src man $(BIN)-$(VERSION)
+	mv $(BIN).1 $(BIN)-$(VERSION)/man
+	tar -czf $(BIN)-$(VERSION).tar.gz $(BIN)-$(VERSION)
+	rm -r $(BIN)-$(VERSION)
