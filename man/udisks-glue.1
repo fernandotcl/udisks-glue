@@ -1,0 +1,131 @@
+.TH UDISKS-GLUE 1 LOCAL
+.SH NAME
+udisks-glue - A tool to associate udisks events to user-defined actions
+.SH SYNOPSIS
+.B udisks-glue
+[\fB\-c \fIconfig\-file\fR]
+[\fB\-f\fR]
+[\fB\-h\fR]
+.SH DESCRIPTION
+udisks-glue listens for UDisks DBus events and reacts to them according to the configuration.
+.TP 26
+.B -c\fR/\fB--config \fIconfig-file
+Use \fIconfig-file\fR as the configuration file
+.TP
+.B -f\fR/\fB--foreground
+Remain in foreground (don't daemonize)
+.TP
+.B -h\fR/\fB--help
+Display usage information and exit
+.SH CONFIGURATION FILE
+If no configuration file is specified by command line arguments, udisks-glue looks for the following configuration files (in this order):
+.TP 3
+.B 1.
+.I $HOME\fB/udisks-glue/udisks-glue.conf
+.TP
+.B 2.
+.I $HOME\fB/.udisks-glue.conf
+.TP
+.B 3.
+.B /etc/udisks-glue.conf
+.PP
+A configuration file must exist or otherwise udisks-glue will fail to start up.
+.SH CONFIGURATION SYNTAX
+udisks-glue is configured by a series of match directives referencing filter directives. Filter directives define parameters that filter the UDisks events. Match directives specify actions to be taken by udisks-glue in case the corresponded filter matches.
+
+Filter and match directives can be specified in any order. You should use unique names for filter directives. The rules are evaluated in the order the match directives are specified. A default directive is a special directive used as a fallback in case no other directives match. It does not reference a filter directive. You may choose not to specify a default directive.
+
+Due to the way the rules are evaluated, it's advised that more specific match directives are defined before less specific ones. If a match directive does not specify one of the available actions, another directive may be chosen. If no action is to be taken, specify an empty command to prevent another match directive from taking over. The currently available match directive actions are:
+.TP 25
+.B post_insertion_command
+Runs after a device is inserted or after its media has been made available
+.TP
+.B post_mount_command
+Runs after a device has been mounted
+.TP
+.B post_removal_command
+Runs after a device or its media has been removed
+.PP
+The currently supported filter parameters are:
+.TP 25
+.B removable
+The device is a removable device
+.TP
+.B readonly
+The device is a ready-only device
+.TP
+.B optical
+The device uses optical disc as its media
+.TP
+.B optical_disc_closed
+The optical disc is closed
+.PP
+Note that the rules are evaluated only at the time the device or its media is inserted. Internal drives are always ignored.
+.SH EXAMPLES
+The following configuration example shows how \fBudisks\fR(1) can be used to mount USB pendrives and similar devices. Notifications are provided by a custom script that could display on-screen information or provide notifications in some other way:
+
+.nf
+filter disks {
+    optical = false
+}
+
+match disks {
+    post_insertion_command = "udisks --mount %device_file --mount-options sync"
+    post_mount_command = "mount-notify %device_file %mount_point"
+    post_removal_command = "mount-notify %device_file removed"
+}
+.fi
+
+A more complex example shows how the filters can be used to mount optical and non-optical media (USB pendrives and the like) using different mount options and how a specific program can be launched on non-closed optical discs.
+
+.nf
+#
+# Filters
+#
+
+filter disks {
+    optical = false
+}
+
+filter burnable {
+    optical = true
+    disc_closed = false
+}
+
+filter optical {
+    optical = true
+}
+
+#
+# The default entry
+#
+
+default {
+    post_mount_command = "mount-notify %device_file %mount_point"
+    post_removal_command = "mount-notify %device_file removed"
+}
+
+#
+# Additional entries
+#
+
+match disks {
+    post_insertion_command = "udisks --mount %device_file --mount-options sync"
+}
+
+match burnable {
+    post_insertion_command = "k3b %device_file"
+    post_mount_command = ""
+}
+
+match optical {
+    post_insertion_command = "udisks --mount %device_file --mount-options ro"
+}
+.fi
+
+Note how we explicitly defined an empty post-mount command for the burnable match directive. This means that no post-mount command will be taken if the burnable match directive is chosen when the rules are evaluated.
+
+.SH SEE ALSO
+.B udisks\fR(1),
+.B udisks\fR(7),
+.B udisks-daemon\fR(8)

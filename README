@@ -80,12 +80,13 @@ match disks {
     post_insertion_command = "udisks --mount %device_file --mount-options sync"
 }
 
-match optical {
-    post_insertion_command = "udisks --mount %device_file --mount-options ro"
-}
-
 match burnable {
     post_insertion_command = "k3b %device_file"
+    post_mount_command = ""
+}
+
+match optical {
+    post_insertion_command = "udisks --mount %device_file --mount-options ro"
 }
 
 The udisks command should be shipped with your distribution, make sure to read
