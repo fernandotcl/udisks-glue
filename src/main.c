@@ -36,7 +36,7 @@ static void print_usage(FILE *out)
     fprintf(out, "\
 Usage: \n\
     udisks-glue [--foreground] [--config file]\n\
-    udisks-glue [--help]\n");
+    udisks-glue --help\n");
 }
 
 static int parse_config(int argc, char **argv, int *rc)
