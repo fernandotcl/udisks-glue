@@ -47,13 +47,4 @@ clean:
 
 distclean: clean
 	@echo 'DISTCLEAN' && \
-	rm -f $(BIN) $(BIN).1
-
-dist: distclean $(BIN).1
-	rm -rf $(BIN)-$(VERSION)
-	mkdir $(BIN)-$(VERSION)
-	cp INSTALL LICENSE Makefile README $(BIN)-$(VERSION)
-	cp -r src man $(BIN)-$(VERSION)
-	mv $(BIN).1 $(BIN)-$(VERSION)/man
-	tar -czf $(BIN)-$(VERSION).tar.gz $(BIN)-$(VERSION)
-	rm -r $(BIN)-$(VERSION)
+	rm -f $(BIN)
