@@ -47,18 +47,30 @@ Runs after a device has been mounted
 Runs after a device or its media has been removed
 .PP
 The currently supported filter parameters are:
-.TP 25
-.B removable
-The device is a removable device
+.TP 31
+.B label (string)
+User-visible label of the detected file system
 .TP
-.B readonly
-The device is a ready-only device
+.B optical (boolean)
+Set if the device uses optical disc as its media
 .TP
-.B optical
-The device uses optical disc as its media
+.B optical_disc_closed (boolean)
+Set if the optical disc is closed
 .TP
-.B optical_disc_closed
-The optical disc is closed
+.B readonly (boolean)
+Set if the device is a ready-only device
+.TP
+.B removable (boolean)
+Set if the device is a removable device
+.TP
+.B type (string)
+Extended information about the device, generally set to the name of the detected file system if the \fBusage\fR property is set to \fIfilesystem
+.TP
+.B usage (string)
+The result of probing for signatures on the block device, generally set to \fIfilesystem\fR if a mountable file system was detected
+.TP
+.B uuid (string)
+UUID of the detected file system
 .PP
 Note that the rules are evaluated only at the time the device or its media is inserted. Internal drives are always ignored.
 .SH EXAMPLES
@@ -67,6 +79,7 @@ The following configuration example shows how \fBudisks\fR(1) can be used to mou
 .nf
 filter disks {
     optical = false
+    usage = filesystem
 }
 
 match disks {
@@ -85,6 +98,7 @@ A more complex example shows how the filters can be used to mount optical and no
 
 filter disks {
     optical = false
+    usage = filesystem
 }
 
 filter burnable {
