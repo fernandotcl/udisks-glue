@@ -14,7 +14,7 @@ OBJS=$(SRCS:.c=.o)
 HEADERS=$(wildcard src/*.h)
 
 CFLAGS+=-DSYSCONFDIR='"$(SYSCONFDIR)"'
-CFLAGS+=-std=c99 -Wall -Werror
+CFLAGS+=-std=c99 -D_GNU_SOURCE -Wall -Werror
 CFLAGS+=$(shell pkg-config --cflags dbus-glib-1)
 CFLAGS+=$(shell pkg-config --cflags glib-2.0)
 CFLAGS+=$(shell pkg-config --cflags libconfuse)

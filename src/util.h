@@ -15,6 +15,6 @@
 gchar *str_replace(gchar *string, gchar *search, gchar *replacement);
 void run_command(const char *command);
 void daemonize();
-int file_exists(const char *path);
+const char *find_config_file();
 
 #endif

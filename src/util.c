@@ -14,6 +14,8 @@
 #include <glib.h>
 #include <glob.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 gchar *str_replace(gchar *string, gchar *search, gchar *replacement)
@@ -64,14 +66,74 @@ void daemonize()
     open("/dev/null", O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
 }
 
-int file_exists(const char *path)
+static char *expand_path(const char *path)
 {
-    static glob_t glob_buffer;
+    glob_t glob_buffer;
     if (glob(path, GLOB_NOCHECK | GLOB_TILDE, NULL, &glob_buffer) != 0)
         return 0;
 
-    const char *expanded = glob_buffer.gl_pathc > 0 ? glob_buffer.gl_pathv[0] : path;
+    char *expanded = glob_buffer.gl_pathc > 0 ? strdup(glob_buffer.gl_pathv[0]) : strdup(path);
+    globfree(&glob_buffer);
 
+    return expanded;
+}
+
+static int file_exists(const char *path)
+{
     struct stat s;
-    return stat(expanded, &s) == -1 ? 0 : 1;
+    return stat(path, &s) == -1 ? 0 : 1;
+}
+
+const char *find_config_file()
+{
+    char *path;
+    int res;
+
+    path = expand_path("~/.udisks-glue.conf");
+    if (file_exists(path))
+        return path;
+    else
+        free(path);
+
+    char *xdg_config_home = getenv("XDG_CONFIG_HOME");
+    if (!xdg_config_home)
+        xdg_config_home = "~/.config";
+
+    xdg_config_home = expand_path(xdg_config_home);
+    res = asprintf(&path, "%s/udisks-glue/config", xdg_config_home);
+    free(xdg_config_home);
+    if (res == -1)
+        perror("asprintf");
+    else if (file_exists(path))
+        return path;
+    else
+        free(path);
+
+    path = expand_path(SYSCONFDIR "/udisks-glue.conf");
+    if (file_exists(path))
+        return path;
+    else
+        free(path);
+
+    const char *xdg_config_dirs = getenv("XDG_CONFIG_DIRS");
+    if (!xdg_config_dirs)
+        xdg_config_dirs = SYSCONFDIR "/xdg";
+
+    char *buf = strdup(xdg_config_dirs);
+    char *tok = strtok(buf, ":");
+    while (tok != NULL) {
+        tok = expand_path(tok);
+        res = asprintf(&path, "%s/udisks-glue/config", tok);
+        free(tok);
+        if (res == -1)
+            perror("asprintf");
+        else if (file_exists(path))
+            return path;
+        else
+            free(path);
+        tok = strtok(NULL, ":");
+    }
+    free(buf);
+
+    return NULL;
 }

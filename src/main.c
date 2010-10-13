@@ -71,17 +71,11 @@ static int parse_config(int argc, char **argv, int *rc)
         }
     }
  
+    int config_file_was_allocated = 0;
     if (config_file == NULL) {
-        if (file_exists("~/.config/udisks-glue/udisks-glue.conf")) {
-            config_file = "~/.config/udisks-glue/udisks-glue.conf";
-        }
-        else if (file_exists("~/.udisks-glue.conf")) {
-            config_file = "~/.udisks-glue.conf";
-        }
-        else if (file_exists(SYSCONFDIR "/udisks-glue.conf")) {
-            config_file = SYSCONFDIR "/udisks-glue.conf";
-        }
-        else {
+        config_file = find_config_file();
+        config_file_was_allocated = 1;
+        if (!config_file) {
             fprintf(stderr, "Unable to find the configuration file\n");
             *rc = EXIT_FAILURE;
             return 1;
@@ -103,7 +97,10 @@ static int parse_config(int argc, char **argv, int *rc)
     };
 
     cfg = cfg_init(opts, CFGF_NONE);
-    if (cfg_parse(cfg, config_file) == CFG_PARSE_ERROR) {
+    int res = cfg_parse(cfg, config_file);
+    if (config_file_was_allocated)
+        free((char *)config_file);
+    if (res == CFG_PARSE_ERROR) {
         *rc = EXIT_FAILURE;
         return 1;
     }
