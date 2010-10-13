@@ -21,13 +21,16 @@ Display usage information and exit
 If no configuration file is specified by command line arguments, udisks-glue looks for the following configuration files (in this order):
 .TP 3
 .B 1.
-.I $HOME\fB/udisks-glue/udisks-glue.conf
+.I $HOME\fB/.udisks-glue.conf
 .TP
 .B 2.
-.I $HOME\fB/.udisks-glue.conf
+.I $XDG_CONFIG_HOME\fB/udisks-glue/config
 .TP
 .B 3.
 .B /etc/udisks-glue.conf
+.TP
+.B 4.
+.I $DIR\fB/udisks-glue/config\fR for each dir in \fI$XDG_CONFIG_DIR
 .PP
 A configuration file must exist or otherwise udisks-glue will fail to start up.
 .SH CONFIGURATION SYNTAX
