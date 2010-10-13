@@ -23,8 +23,15 @@
     int identifier; \
     int identifier##_is_hot;
 
+#define DECLARE_STRING_FILTER_CACHE(identifier) \
+    gchar *identifier; \
+    int identifier##_is_hot;
+
 #define DECLARE_BOOLEAN_FILTER_OPTION(config_key) \
     CFG_BOOL(#config_key, 0, CFGF_NODEFAULT)
+
+#define DECLARE_STRING_FILTER_OPTION(config_key) \
+    CFG_STR(#config_key, NULL, CFGF_NODEFAULT)
 
 #define IMPLEMENT_BOOLEAN_FILTER(identifier, property) \
     static int filter_function_##identifier(DBusGProxy *proxy, void *value, filter_cache *cache) { \
@@ -36,11 +43,29 @@
         return cache->boolean_values.identifier == wanted_value; \
     }
 
+#define IMPLEMENT_STRING_FILTER(identifier, property) \
+    static int filter_function_##identifier(DBusGProxy *proxy, void *value, filter_cache *cache) { \
+        if (!cache->string_values.identifier##_is_hot) { \
+            cache->string_values.identifier = DEVICE_PROPERTY(string, property); \
+            cache->to_free = g_slist_prepend(cache->to_free, cache->string_values.identifier); \
+            cache->string_values.identifier##_is_hot = 1; \
+        } \
+        return !strcmp((const char *)cache->string_values.identifier, (const char *)value); \
+    }
+
 #define LINK_BOOLEAN_FILTER(identifier, config_key) \
     if (cfg_size(sec, config_key)) { \
         filter_parameters *fp = g_malloc(sizeof(filter_parameters)); \
         fp->func = &filter_function_##identifier; \
         fp->arg = (void *)cfg_getbool(sec, config_key); \
+        f->parameters = g_slist_prepend(f->parameters, fp); \
+    }
+
+#define LINK_STRING_FILTER(identifier, config_key) \
+    if (cfg_size(sec, config_key)) { \
+        filter_parameters *fp = g_malloc(sizeof(filter_parameters)); \
+        fp->func = &filter_function_##identifier; \
+        fp->arg = (void *)cfg_getstr(sec, config_key); \
         f->parameters = g_slist_prepend(f->parameters, fp); \
     }
 
@@ -68,6 +93,15 @@ struct filter_cache_ {
         DECLARE_BOOLEAN_FILTER_CACHE(optical)
         DECLARE_BOOLEAN_FILTER_CACHE(optical_disc_closed)
     } boolean_values;
+
+    struct {
+        DECLARE_STRING_FILTER_CACHE(usage)
+        DECLARE_STRING_FILTER_CACHE(type)
+        DECLARE_STRING_FILTER_CACHE(uuid)
+        DECLARE_STRING_FILTER_CACHE(label)
+    } string_values;
+
+    GSList *to_free;
 };
 
 static cfg_opt_t filter_opts[] = {
@@ -75,6 +109,12 @@ static cfg_opt_t filter_opts[] = {
     DECLARE_BOOLEAN_FILTER_OPTION(read_only),
     DECLARE_BOOLEAN_FILTER_OPTION(optical),
     DECLARE_BOOLEAN_FILTER_OPTION(disc_closed),
+
+    DECLARE_STRING_FILTER_OPTION(usage),
+    DECLARE_STRING_FILTER_OPTION(type),
+    DECLARE_STRING_FILTER_OPTION(uuid),
+    DECLARE_STRING_FILTER_OPTION(label),
+
     CFG_END()
 };
 
@@ -87,12 +127,22 @@ IMPLEMENT_BOOLEAN_FILTER(read_only,           "DeviceIsReadOnly")
 IMPLEMENT_BOOLEAN_FILTER(optical,             "DeviceIsOpticalDisc")
 IMPLEMENT_BOOLEAN_FILTER(optical_disc_closed, "OpticalDiscIsClosed")
 
+IMPLEMENT_STRING_FILTER(usage, "IdUsage")
+IMPLEMENT_STRING_FILTER(type,  "IdType")
+IMPLEMENT_STRING_FILTER(uuid,  "IdUuid")
+IMPLEMENT_STRING_FILTER(label, "IdLabel")
+
 static void add_filter_parameters(filter *f, cfg_t *sec)
 {
     LINK_BOOLEAN_FILTER(removable,           "removable")
     LINK_BOOLEAN_FILTER(read_only,           "read_only")
     LINK_BOOLEAN_FILTER(optical,             "optical")
     LINK_BOOLEAN_FILTER(optical_disc_closed, "disc_closed")
+
+    LINK_STRING_FILTER(usage, "usage")
+    LINK_STRING_FILTER(type,  "type")
+    LINK_STRING_FILTER(uuid,  "uuid")
+    LINK_STRING_FILTER(label, "label")
 }
 
 static filter *filter_create()
@@ -197,6 +247,7 @@ filter_cache *filter_cache_create()
 
 void filter_cache_free(filter_cache *cache)
 {
+    g_slist_foreach(cache->to_free, (GFunc)g_free, NULL);
     g_free(cache);
 }
 
