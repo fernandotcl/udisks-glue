@@ -8,12 +8,14 @@
  */
 
 #include <dbus/dbus-glib.h>
+#include <sys/types.h>
 #include <confuse.h>
 #include <getopt.h>
 #include <glib.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "dbus_constants.h"
 #include "filters.h"
@@ -35,7 +37,7 @@ static void print_usage(FILE *out)
 {
     fprintf(out, "\
 Usage: \n\
-    udisks-glue [--foreground] [--config file]\n\
+    udisks-glue [--config file] [--foreground] [--pidfile pidfile]\n\
     udisks-glue --help\n");
 }
 
@@ -45,14 +47,16 @@ static int parse_config(int argc, char **argv, int *rc)
         { "config", required_argument, 0, 'c' },
         { "foreground", no_argument, 0, 'f' },
         { "help", no_argument, 0, 'h' },
+        { "pidfile", required_argument, 0, 'p' },
         { NULL, 0, 0, 0 }
     };
 
     int do_daemonize = 1;
     const char *config_file = NULL;
+    const char *pidfile = NULL;
 
     int opt, option_index = 0;
-    while ((opt = getopt_long(argc, argv, "c:fh", long_options, &option_index)) != EOF) {
+    while ((opt = getopt_long(argc, argv, "c:fhp:", long_options, &option_index)) != EOF) {
         switch ((char)opt) {
             case 'c':
                 config_file = optarg;
@@ -64,6 +68,9 @@ static int parse_config(int argc, char **argv, int *rc)
                 print_usage(stdout);
                 *rc = EXIT_SUCCESS;
                 return 1;
+            case 'p':
+                pidfile = optarg;
+                break;
             default:
                 print_usage(stderr);
                 *rc = EXIT_FAILURE;
@@ -107,6 +114,14 @@ static int parse_config(int argc, char **argv, int *rc)
 
     if (do_daemonize)
         daemonize();
+
+    if (pidfile) {
+        FILE *fp = fopen(pidfile, "w");
+        if (fp) {
+            fprintf(fp, "%d\n", getpid());
+            fclose(fp);
+        }
+    }
 
     return 0;
 }
