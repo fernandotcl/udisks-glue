@@ -5,6 +5,9 @@ udisks\-glue \- A tool to associate udisks events to user\-defined actions
 .B udisks\-glue
 [\fB\-c \fIconfig\-file\fR]
 [\fB\-f\fR]
+[\fB\-p \fIpidfile\fR]
+
+.B udisks\-glue
 [\fB\-h\fR]
 .SH DESCRIPTION
 udisks\-glue listens for UDisks DBus events and reacts to them according to the configuration.
@@ -17,6 +20,9 @@ Remain in foreground (don't daemonize)
 .TP
 .B \-h\fR/\fB\-\-help
 Display usage information and exit
+.TP
+.B \-p\fR/\fB\-\-pidfile \fIpidfile
+Use \fIpidfile\fR file as the pidfile
 .SH CONFIGURATION FILE
 If no configuration file is specified by command line arguments, udisks\-glue looks for the following configuration files (in this order):
 .TP 3
