@@ -1,40 +1,40 @@
-.TH UDISKS-GLUE 1
+.TH UDISKS\-GLUE 1
 .SH NAME
-udisks-glue - A tool to associate udisks events to user-defined actions
+udisks\-glue \- A tool to associate udisks events to user\-defined actions
 .SH SYNOPSIS
-.B udisks-glue
+.B udisks\-glue
 [\fB\-c \fIconfig\-file\fR]
 [\fB\-f\fR]
 [\fB\-h\fR]
 .SH DESCRIPTION
-udisks-glue listens for UDisks DBus events and reacts to them according to the configuration.
+udisks\-glue listens for UDisks DBus events and reacts to them according to the configuration.
 .TP 26
-.B -c\fR/\fB--config \fIconfig-file
-Use \fIconfig-file\fR as the configuration file
+.B \-c\fR/\fB\-\-config \fIconfig\-file
+Use \fIconfig\-file\fR as the configuration file
 .TP
-.B -f\fR/\fB--foreground
+.B \-f\fR/\fB\-\-foreground
 Remain in foreground (don't daemonize)
 .TP
-.B -h\fR/\fB--help
+.B \-h\fR/\fB\-\-help
 Display usage information and exit
 .SH CONFIGURATION FILE
-If no configuration file is specified by command line arguments, udisks-glue looks for the following configuration files (in this order):
+If no configuration file is specified by command line arguments, udisks\-glue looks for the following configuration files (in this order):
 .TP 3
 .B 1.
-.I $HOME\fB/.udisks-glue.conf
+.I $HOME\fB/.udisks\-glue.conf
 .TP
 .B 2.
-.I $XDG_CONFIG_HOME\fB/udisks-glue/config
+.I $XDG_CONFIG_HOME\fB/udisks\-glue/config
 .TP
 .B 3.
-.B /etc/udisks-glue.conf
+.B /etc/udisks\-glue.conf
 .TP
 .B 4.
-.I $DIR\fB/udisks-glue/config\fR for each dir in \fI$XDG_CONFIG_DIR
+.I $DIR\fB/udisks\-glue/config\fR for each dir in \fI$XDG_CONFIG_DIR
 .PP
-A configuration file must exist or otherwise udisks-glue will fail to start up.
+A configuration file must exist or otherwise udisks\-glue will fail to start up.
 .SH CONFIGURATION SYNTAX
-udisks-glue is configured by a series of match directives referencing filter directives. Filter directives define parameters that filter the UDisks events. Match directives specify actions to be taken by udisks-glue in case the corresponded filter matches.
+udisks\-glue is configured by a series of match directives referencing filter directives. Filter directives define parameters that filter the UDisks events. Match directives specify actions to be taken by udisks\-glue in case the corresponded filter matches.
 
 Filter and match directives can be specified in any order. You should use unique names for filter directives. The rules are evaluated in the order the match directives are specified. A default directive is a special directive used as a fallback in case no other directives match. It does not reference a filter directive. You may choose not to specify a default directive.
 
@@ -52,7 +52,7 @@ Runs after a device or its media has been removed
 The currently supported filter parameters are:
 .TP 31
 .B label (string)
-User-visible label of the detected file system
+User\-visible label of the detected file system
 .TP
 .B optical (boolean)
 Set if the device uses optical disc as its media
@@ -61,7 +61,7 @@ Set if the device uses optical disc as its media
 Set if the optical disc is closed
 .TP
 .B readonly (boolean)
-Set if the device is a ready-only device
+Set if the device is a ready\-only device
 .TP
 .B removable (boolean)
 Set if the device is a removable device
@@ -77,7 +77,7 @@ UUID of the detected file system
 .PP
 Note that the rules are evaluated only at the time the device or its media is inserted. Internal drives are always ignored.
 .SH EXAMPLES
-The following configuration example shows how \fBudisks\fR(1) can be used to mount USB pendrives and similar devices. Notifications are provided by a custom script that could display on-screen information or provide notifications in some other way:
+The following configuration example shows how \fBudisks\fR(1) can be used to mount USB pendrives and similar devices. Notifications are provided by a custom script that could display on\-screen information or provide notifications in some other way:
 
 .nf
 filter disks {
@@ -86,13 +86,13 @@ filter disks {
 }
 
 match disks {
-    post_insertion_command = "udisks --mount %device_file --mount-options sync"
-    post_mount_command = "mount-notify %device_file %mount_point"
-    post_removal_command = "mount-notify %device_file removed"
+    post_insertion_command = "udisks \-\-mount %device_file \-\-mount\-options sync"
+    post_mount_command = "mount\-notify %device_file %mount_point"
+    post_removal_command = "mount\-notify %device_file removed"
 }
 .fi
 
-A more complex example shows how the filters can be used to mount optical and non-optical media (USB pendrives and the like) using different mount options and how a specific program can be launched on non-closed optical discs.
+A more complex example shows how the filters can be used to mount optical and non\-optical media (USB pendrives and the like) using different mount options and how a specific program can be launched on non\-closed optical discs.
 
 .nf
 #
@@ -118,8 +118,8 @@ filter optical {
 #
 
 default {
-    post_mount_command = "mount-notify %device_file %mount_point"
-    post_removal_command = "mount-notify %device_file removed"
+    post_mount_command = "mount\-notify %device_file %mount_point"
+    post_removal_command = "mount\-notify %device_file removed"
 }
 
 #
@@ -127,7 +127,7 @@ default {
 #
 
 match disks {
-    post_insertion_command = "udisks --mount %device_file --mount-options sync"
+    post_insertion_command = "udisks \-\-mount %device_file \-\-mount\-options sync"
 }
 
 match burnable {
@@ -136,12 +136,12 @@ match burnable {
 }
 
 match optical {
-    post_insertion_command = "udisks --mount %device_file --mount-options ro"
+    post_insertion_command = "udisks \-\-mount %device_file \-\-mount\-options ro"
 }
 .fi
 
-Note how we explicitly defined an empty post-mount command for the burnable match directive. This means that no post-mount command will be taken if the burnable match directive is chosen when the rules are evaluated.
+Note how we explicitly defined an empty post\-mount command for the burnable match directive. This means that no post\-mount command will be taken if the burnable match directive is chosen when the rules are evaluated.
 .SH SEE ALSO
 .B udisks\fR(1),
 .B udisks\fR(7),
-.B udisks-daemon\fR(8)
+.B udisks\-daemon\fR(8)
