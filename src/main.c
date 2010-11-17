@@ -66,8 +66,8 @@ static int parse_config(int argc, char **argv, int *rc)
                 do_daemonize = 0;
                 break;
             case 'h':
-                *rc = EXIT_SUCCESS;
                 print_usage(stdout);
+                *rc = EXIT_SUCCESS;
                 return 1;
             case 'p':
                 pidfile = optarg;
