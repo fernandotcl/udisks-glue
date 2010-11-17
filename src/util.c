@@ -61,7 +61,6 @@ void daemonize()
 
 void close_descriptors()
 {
-
     for (int i = 0; i < 3; ++i)
         close(i);
  

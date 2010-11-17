@@ -120,7 +120,7 @@ static int parse_config(int argc, char **argv, int *rc)
         }
 
         if (lockf(fileno(fpidfile), F_TLOCK, 0) == -1) {
-            flcose(fpidfile);
+            fclose(fpidfile);
             fprintf(stderr, "Another udisks-glue instance is running\n");
             exit(EXIT_FAILURE);
         }
