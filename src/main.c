@@ -66,6 +66,7 @@ static int parse_config(int argc, char **argv, int *rc)
                 do_daemonize = 0;
                 break;
             case 'h':
+                *rc = EXIT_SUCCESS;
                 print_usage(stdout);
                 return 1;
             case 'p':
@@ -136,6 +137,9 @@ static int parse_config(int argc, char **argv, int *rc)
 
 int main(int argc, char **argv)
 {
+    GError *error = NULL;
+    DBusGProxy *proxy = NULL;
+
     int rc = EXIT_FAILURE;
     if (parse_config(argc, argv, &rc))
         goto cleanup;
@@ -146,9 +150,6 @@ int main(int argc, char **argv)
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
     signal(SIGQUIT, signal_handler);
-
-    GError *error = NULL;
-    DBusGProxy *proxy = NULL;
 
     g_type_init();
     loop = g_main_loop_new(NULL, FALSE);
