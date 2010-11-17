@@ -26,6 +26,7 @@ DBusGConnection *dbus_conn = NULL;
 
 static GMainLoop *loop = NULL;
 static cfg_t *cfg = NULL;
+static FILE *fpidfile = NULL;
 
 static void signal_handler(int sig)
 {
@@ -111,12 +112,24 @@ static int parse_config(int argc, char **argv, int *rc)
         daemonize();
 
     if (pidfile) {
-        FILE *fp = fopen(pidfile, "w");
-        if (fp) {
-            fprintf(fp, "%d\n", getpid());
-            fclose(fp);
+        fpidfile = fopen(pidfile, "w");
+
+        if (!fpidfile) {
+            fprintf(stderr, "Unable to open pidfile\n");
+            exit(EXIT_FAILURE);
         }
+
+        if (lockf(fileno(fpidfile), F_TLOCK, 0) == -1) {
+            flcose(fpidfile);
+            fprintf(stderr, "Another udisks-glue instance is running\n");
+            exit(EXIT_FAILURE);
+        }
+
+        fprintf(fpidfile, "%d\n", getpid());
     }
+
+    if (do_daemonize)
+        close_descriptors();
 
     return 0;
 }
@@ -165,6 +178,7 @@ cleanup:
     if (proxy) g_object_unref(proxy);
     if (dbus_conn) dbus_g_connection_unref(dbus_conn);
     if (loop) g_main_loop_unref(loop);
+    if (fpidfile) fclose(fpidfile);
     handlers_free();
     filters_free();
     return rc;

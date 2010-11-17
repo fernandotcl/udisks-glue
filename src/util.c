@@ -57,6 +57,10 @@ void daemonize()
     umask(0);
     setsid();
     chdir("/");
+}
+
+void close_descriptors()
+{
 
     for (int i = 0; i < 3; ++i)
         close(i);
