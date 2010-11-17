@@ -66,14 +66,12 @@ static int parse_config(int argc, char **argv, int *rc)
                 break;
             case 'h':
                 print_usage(stdout);
-                *rc = EXIT_SUCCESS;
                 return 1;
             case 'p':
                 pidfile = optarg;
                 break;
             default:
                 print_usage(stderr);
-                *rc = EXIT_FAILURE;
                 return 1;
         }
     }
@@ -84,7 +82,6 @@ static int parse_config(int argc, char **argv, int *rc)
         config_file_was_allocated = 1;
         if (!config_file) {
             fprintf(stderr, "Unable to find the configuration file\n");
-            *rc = EXIT_FAILURE;
             return 1;
         }
     }
@@ -107,10 +104,8 @@ static int parse_config(int argc, char **argv, int *rc)
     int res = cfg_parse(cfg, config_file);
     if (config_file_was_allocated)
         free((char *)config_file);
-    if (res == CFG_PARSE_ERROR) {
-        *rc = EXIT_FAILURE;
+    if (res == CFG_PARSE_ERROR)
         return 1;
-    }
 
     if (do_daemonize)
         daemonize();
@@ -128,18 +123,17 @@ static int parse_config(int argc, char **argv, int *rc)
 
 int main(int argc, char **argv)
 {
-    int rc;
+    int rc = EXIT_FAILURE;
     if (parse_config(argc, argv, &rc))
-        return rc;
+        goto cleanup;
 
     if (!filters_init(cfg))
-        return EXIT_FAILURE;
+        goto cleanup;
 
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
     signal(SIGQUIT, signal_handler);
 
-    rc = EXIT_FAILURE;
     GError *error = NULL;
     DBusGProxy *proxy = NULL;
 
@@ -170,7 +164,7 @@ cleanup:
     if (error) g_error_free(error);
     if (proxy) g_object_unref(proxy);
     if (dbus_conn) dbus_g_connection_unref(dbus_conn);
-    g_main_loop_unref(loop);
+    if (loop) g_main_loop_unref(loop);
     handlers_free();
     filters_free();
     return rc;

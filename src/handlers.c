@@ -192,7 +192,8 @@ void handlers_init(DBusGProxy *proxy)
 
 void handlers_free()
 {
-    g_hash_table_destroy(tracked_objects);
+    if (tracked_objects)
+        g_hash_table_destroy(tracked_objects);
 }
 
 void device_added_signal_handler(DBusGProxy *proxy, const char *object_path, gpointer user_data)
