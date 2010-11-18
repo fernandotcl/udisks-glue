@@ -49,6 +49,8 @@ typedef struct {
     const char *post_removal_command;
 } tracked_object;
 
+void device_added_signal_handler(DBusGProxy *proxy, const char *object_path, gpointer user_data);
+
 static GHashTable *tracked_objects;
 
 static void free_tracked_object(tracked_object *tobj)
@@ -59,16 +61,23 @@ static void free_tracked_object(tracked_object *tobj)
     g_free(tobj);
 }
 
-static void post_insertion_procedure(tracked_object *tobj, DBusGProxy *props_proxy)
+static const char* get_commands(tracked_object *tobj, DBusGProxy *props_proxy)
 {
-    g_print("Device file %s inserted\n", tobj->device_file);
-
-    // Look for the commands
     filter_cache *cache = filter_cache_create();
     const char *command = filters_get_command(props_proxy, FILTER_COMMAND_POST_INSERTION, cache);
     tobj->post_mount_command = filters_get_command(props_proxy, FILTER_COMMAND_POST_MOUNT, cache);
     tobj->post_removal_command = filters_get_command(props_proxy, FILTER_COMMAND_POST_REMOVAL, cache);
     filter_cache_free(cache);
+
+    return command;
+}
+
+static void post_insertion_procedure(tracked_object *tobj, DBusGProxy *props_proxy)
+{
+    g_print("Device file %s inserted\n", tobj->device_file);
+
+    // Look for the commands
+    const char* command = get_commands(tobj, props_proxy);
 
     // Run the post-insertion command
     if (command && command[0]) {
@@ -137,44 +146,8 @@ static void load_devices(DBusGProxy *proxy)
     for (int i = 0; i < devices->len; ++i) {
         // Get the properties proxy
         char *object_path = devices->pdata[i];
-        DBusGProxy *props_proxy = dbus_g_proxy_new_for_name(dbus_conn, DBUS_COMMON_NAME_UDISKS, object_path, DBUS_INTERFACE_DBUS_PROPERTIES);
 
-        // Skip system internal devices
-        int is_system_internal = get_bool_property(props_proxy, "DeviceIsSystemInternal", DBUS_INTERFACE_UDISKS_DEVICE);
-        if (is_system_internal != BOOL_PROP_FALSE) {
-            g_object_unref(props_proxy);
-            continue;
-        }
-
-        // Get some properties
-        GET_BOOL_PROPERTY_CONTINUE("DeviceIsMediaAvailable", is_media_available);
-        GET_BOOL_PROPERTY_CONTINUE("DeviceIsMounted", is_mounted);
-
-        // Get the device file
-        gchar *device_file = get_string_property(props_proxy, "DeviceFile", DBUS_INTERFACE_UDISKS_DEVICE);
-        if (!device_file) {
-            g_object_unref(props_proxy);
-            continue;
-        }
-
-        // Create and insert the new tracked object
-        tracked_object *tobj = g_malloc0(sizeof(tracked_object));
-        if (!tobj) {
-            g_printerr("g_malloc failed\n");
-            g_object_unref(props_proxy);
-            g_free(device_file);
-            return;
-        }
-        g_hash_table_insert(tracked_objects, g_strdup(object_path), tobj);
-
-        // Configure the tracked object
-        tobj->device_file = device_file;
-        if (is_mounted)
-            tobj->status = TRACKED_OBJECT_STATUS_MOUNTED;
-        else if (is_media_available)
-            tobj->status = TRACKED_OBJECT_STATUS_INSERTED;
-        else
-            tobj->status = TRACKED_OBJECT_STATUS_NO_MEDIA;
+        device_added_signal_handler(proxy, object_path, NULL);
     }
 
     g_ptr_array_foreach(devices, (GFunc)g_free, NULL);
@@ -212,6 +185,7 @@ void device_added_signal_handler(DBusGProxy *proxy, const char *object_path, gpo
     // Get some properties
     GET_BOOL_PROPERTY_RETURN("DeviceIsRemovable", is_removable);
     GET_BOOL_PROPERTY_RETURN("DeviceIsMediaAvailable", is_media_available);
+    GET_BOOL_PROPERTY_RETURN("DeviceIsMounted", is_mounted);
 
     // Get the device file
     gchar *device_file = get_string_property(props_proxy, "DeviceFile", DBUS_INTERFACE_UDISKS_DEVICE);
@@ -230,6 +204,15 @@ void device_added_signal_handler(DBusGProxy *proxy, const char *object_path, gpo
     }
     tobj->device_file = device_file;
     g_hash_table_insert(tracked_objects, g_strdup(object_path), tobj);
+    
+    // If loading devices on init and device is already mounted
+    if (is_mounted) {
+        tobj->status = TRACKED_OBJECT_STATUS_MOUNTED;
+        get_commands(tobj, props_proxy);
+        tobj->mount_point = get_mount_point(props_proxy);
+        g_object_unref(props_proxy);
+        return;
+    }
 
     // If it's not a removable device, run the post-insertion procedure directly
     if (!is_removable) {
