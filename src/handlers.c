@@ -115,6 +115,10 @@ static void post_unmount_procedure(tracked_object *tobj)
         run_command(expanded);
         g_free(expanded);
     }
+
+    // The mount point is no longer needed
+    g_free(tobj->mount_point);
+    tobj->mount_point = NULL;
 }
 
 static void post_removal_procedure(tracked_object *tobj)
