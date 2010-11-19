@@ -52,8 +52,19 @@ Runs after a device is inserted or after its media has been made available
 .B post_mount_command
 Runs after a device has been mounted
 .TP
+.B post_unmount_command
+Runs after a device has been unmounted
+.TP
 .B post_removal_command
 Runs after a device or its media has been removed
+.PP
+Before those commands are run, udisks\-glue will substitute some tokens with information about the device:
+.TP 15
+.B %device_file
+Path to the device file
+.TP
+.B %mount_point
+Last known mount point for the device (only replaced in \fBpost_mount_command\fR and \fBpost_unmount_command\fR)
 .PP
 The currently supported filter parameters are:
 .TP 31
@@ -93,8 +104,8 @@ filter disks {
 
 match disks {
     post_insertion_command = "udisks \-\-mount %device_file \-\-mount\-options sync"
-    post_mount_command = "mount\-notify %device_file %mount_point"
-    post_removal_command = "mount\-notify %device_file removed"
+    post_mount_command = "mount\-notify mounted %device_file %mount_point"
+    post_unmount_command = "mount\-notify unmounted %device_file %mount_point"
 }
 .fi
 
@@ -124,8 +135,8 @@ filter optical {
 #
 
 default {
-    post_mount_command = "mount\-notify %device_file %mount_point"
-    post_removal_command = "mount\-notify %device_file removed"
+    post_mount_command = "mount\-notify mounted %device_file %mount_point"
+    post_unmount_command = "mount\-notify unmounted %device_file %mount_point"
 }
 
 #
