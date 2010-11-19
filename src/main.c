@@ -91,6 +91,7 @@ static int parse_config(int argc, char **argv, int *rc)
     cfg_opt_t match_opts[] = {
         CFG_STR("post_insertion_command", NULL, CFGF_NONE),
         CFG_STR("post_mount_command", NULL, CFGF_NONE),
+        CFG_STR("post_unmount_command", NULL, CFGF_NONE),
         CFG_STR("post_removal_command", NULL, CFGF_NONE),
         CFG_END()
     };

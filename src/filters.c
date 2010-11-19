@@ -173,6 +173,8 @@ static void candidate_read_funcs(candidate *c, cfg_t *sec)
         c->commands[FILTER_COMMAND_POST_INSERTION] = cfg_getstr(sec, "post_insertion_command");
     if (cfg_size(sec, "post_mount_command"))
         c->commands[FILTER_COMMAND_POST_MOUNT] = cfg_getstr(sec, "post_mount_command");
+    if (cfg_size(sec, "post_unmount_command"))
+        c->commands[FILTER_COMMAND_POST_UNMOUNT] = cfg_getstr(sec, "post_unmount_command");
     if (cfg_size(sec, "post_removal_command"))
         c->commands[FILTER_COMMAND_POST_REMOVAL] = cfg_getstr(sec, "post_removal_command");
 }

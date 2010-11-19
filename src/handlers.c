@@ -46,6 +46,7 @@ typedef struct {
     gchar *device_file;
     gchar *mount_point;
     const char *post_mount_command;
+    const char *post_unmount_command;
     const char *post_removal_command;
 } tracked_object;
 
@@ -66,6 +67,7 @@ static const char *get_commands(tracked_object *tobj, DBusGProxy *props_proxy)
     filter_cache *cache = filter_cache_create();
     const char *command = filters_get_command(props_proxy, FILTER_COMMAND_POST_INSERTION, cache);
     tobj->post_mount_command = filters_get_command(props_proxy, FILTER_COMMAND_POST_MOUNT, cache);
+    tobj->post_unmount_command = filters_get_command(props_proxy, FILTER_COMMAND_POST_UNMOUNT, cache);
     tobj->post_removal_command = filters_get_command(props_proxy, FILTER_COMMAND_POST_REMOVAL, cache);
     filter_cache_free(cache);
 
@@ -94,6 +96,20 @@ static void post_mount_procedure(tracked_object *tobj)
     // Run the post-mount command
     if (tobj->post_mount_command && tobj->post_mount_command[0]) {
         gchar *expanded_tmp = str_replace((gchar *)tobj->post_mount_command, "%device_file", tobj->device_file);
+        gchar *expanded = str_replace(expanded_tmp, "%mount_point", tobj->mount_point);
+        g_free(expanded_tmp);
+        run_command(expanded);
+        g_free(expanded);
+    }
+}
+
+static void post_unmount_procedure(tracked_object *tobj)
+{
+    g_print("Device file %s unmounted from %s\n", tobj->device_file, tobj->mount_point);
+
+    // Run the post-unmount command
+    if (tobj->post_unmount_command && tobj->post_unmount_command[0]) {
+        gchar *expanded_tmp = str_replace((gchar *)tobj->post_unmount_command, "%device_file", tobj->device_file);
         gchar *expanded = str_replace(expanded_tmp, "%mount_point", tobj->mount_point);
         g_free(expanded_tmp);
         run_command(expanded);
@@ -270,11 +286,11 @@ void device_changed_signal_handler(DBusGProxy *proxy, const char *object_path, g
             }
             break;
 
-        // If it has been unmounted just now, run the post-removal procedure
+        // If it has been unmounted just now, run the post-unmount procedure
         case TRACKED_OBJECT_STATUS_MOUNTED:
             if (!is_mounted) {
                 tobj->status = is_media_available ? TRACKED_OBJECT_STATUS_INSERTED : TRACKED_OBJECT_STATUS_NO_MEDIA;
-                post_removal_procedure(tobj);
+                post_unmount_procedure(tobj);
             }
             break;
     }
@@ -296,6 +312,10 @@ void device_removed_signal_handler(DBusGProxy *proxy, const char *object_path, g
 
     // Remove the reference to the object from the table to avoid races
     g_hash_table_steal(tracked_objects, object_path);
+
+    // If the device was mounted, run the post-unmount procedure
+    if (tobj->status == TRACKED_OBJECT_STATUS_MOUNTED)
+        post_unmount_procedure(tobj);
 
     // Run the post-removal procedure and free the tracked object
     post_removal_procedure(tobj);
