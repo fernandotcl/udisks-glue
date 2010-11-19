@@ -53,7 +53,7 @@ void daemonize()
     pid_t pid;
     if ((pid = fork()) != 0)
         exit(0);
- 
+
     umask(0);
     setsid();
     chdir("/");
@@ -63,7 +63,7 @@ void close_descriptors()
 {
     for (int i = 0; i < 3; ++i)
         close(i);
- 
+
     open("/dev/null", O_RDONLY);
     open("/dev/null", O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
     open("/dev/null", O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);

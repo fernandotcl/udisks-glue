@@ -61,7 +61,7 @@ static void free_tracked_object(tracked_object *tobj)
     g_free(tobj);
 }
 
-static const char* get_commands(tracked_object *tobj, DBusGProxy *props_proxy)
+static const char *get_commands(tracked_object *tobj, DBusGProxy *props_proxy)
 {
     filter_cache *cache = filter_cache_create();
     const char *command = filters_get_command(props_proxy, FILTER_COMMAND_POST_INSERTION, cache);
@@ -143,10 +143,9 @@ static void load_devices(DBusGProxy *proxy)
         return;
     }
 
+    // Run the post insertion procedure on these devices
     for (int i = 0; i < devices->len; ++i) {
-        // Get the properties proxy
         char *object_path = devices->pdata[i];
-
         device_added_signal_handler(proxy, object_path, NULL);
     }
 
@@ -204,7 +203,7 @@ void device_added_signal_handler(DBusGProxy *proxy, const char *object_path, gpo
     }
     tobj->device_file = device_file;
     g_hash_table_insert(tracked_objects, g_strdup(object_path), tobj);
-    
+
     // If loading devices on init and device is already mounted
     if (is_mounted) {
         tobj->status = TRACKED_OBJECT_STATUS_MOUNTED;

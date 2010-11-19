@@ -77,7 +77,7 @@ static int parse_config(int argc, char **argv, int *rc)
                 return 1;
         }
     }
- 
+
     int config_file_was_allocated = 0;
     if (config_file == NULL) {
         config_file = find_config_file();
