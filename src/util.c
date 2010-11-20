@@ -55,8 +55,16 @@ void daemonize()
         exit(0);
 
     umask(0);
-    setsid();
-    chdir("/");
+
+    if (setsid() == (pid_t) -1) {
+        perror("setsid");
+        exit(EXIT_FAILURE);
+    }
+
+    if (chdir("/") == -1) {
+        perror("chdir");
+        exit(EXIT_FAILURE);
+    }
 }
 
 void close_descriptors()
