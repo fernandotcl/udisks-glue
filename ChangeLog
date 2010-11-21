@@ -1,0 +1,25 @@
+1.2.0
+=====
+
+* Switch to autotools.
+* Separate unmounting from removal.
+* Mount devices on startup.
+* Enhanced pidfile support.
+
+1.1.1
+=====
+
+* Bug fix release.
+* Pidfile support.
+
+1.1.0
+=====
+
+* Respect the XDG paths properly.
+* Filter by string properties too.
+* New license.
+
+1.0.0
+=====
+
+* Initial release.

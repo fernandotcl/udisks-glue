@@ -6,16 +6,21 @@ Those are the dependencies needed to compile udisks-glue:
 * DBus Glib bindings (libdbus-glib-1-dev in Debian)
 * GLib (libglib2.0-dev in Debian)
 * libConfuse (libconfuse-dev in Debian)
+* autoconf
+* automake
 * pkg-config
-
-If you want to compile the manual pages, you'll need something compatible with
-nroff (groff-base in Debian works great).
 
 
 Installation instructions
 =========================
 
-udisks-glue doesn't use autotools:
+udisks-glue uses autotools. If you're downloading from the Git repository, you
+might need to run autogen.sh before you compile it:
 
-$ make PREFIX=/foo/bar
-$ make PREFIX=/foo/bar install
+$ ./autogen.sh
+
+Compiling and installing it is simple enough:
+
+$ ./configure --prefix=/foo/bar
+$ make
+$ make install
