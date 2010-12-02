@@ -7,7 +7,7 @@ AM_INIT_AUTOMAKE([foreign])
 
 AC_PROG_CC_C99
 if test "x$ac_cv_prog_cc_c99" = "xno"; then
-	AC_MSG_ERROR([C compiler must be C99 compliant])
+    AC_MSG_ERROR([C compiler must be C99 compliant])
 fi
 AC_HEADER_STDC
 
