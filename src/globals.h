@@ -11,7 +11,9 @@
 #define GLOBALS_H
 
 #include <dbus/dbus-glib.h>
+#include <glib.h>
 
 extern DBusGConnection *dbus_conn;
+extern GMainLoop *loop;
 
 #endif
