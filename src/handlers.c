@@ -1,7 +1,7 @@
 /*
  * This file is part of udisks-glue.
  *
- * © 2010 Fernando Tarlá Cardoso Lemos
+ * © 2011 Fernando Tarlá Cardoso Lemos
  * © 2011 Jan Palus
  *
  * Refer to the LICENSE file for licensing information.
@@ -148,7 +148,7 @@ static gchar *get_mount_point(DBusGProxy *props_proxy)
     return g_strdup(*mount_paths);
 }
 
-static void load_devices(DBusGProxy *proxy)
+static int load_devices(DBusGProxy *proxy)
 {
     // Get a list of devices
     GError *error = NULL;
@@ -161,7 +161,7 @@ static void load_devices(DBusGProxy *proxy)
     if (!res) {
         g_printerr("Unable to enumerate the devices: %s\n", error->message);
         g_error_free(error);
-        return;
+        return 0;
     }
 
     // Run the post insertion procedure on these devices
@@ -172,15 +172,16 @@ static void load_devices(DBusGProxy *proxy)
 
     g_ptr_array_foreach(devices, (GFunc)g_free, NULL);
     g_ptr_array_free(devices, TRUE);
+    return 1;
 }
 
-void handlers_init(DBusGProxy *proxy)
+int handlers_init(DBusGProxy *proxy)
 {
     // Create the list of tracked objects
     tracked_objects = g_hash_table_new_full(&g_str_hash, &g_str_equal, &g_free, (GDestroyNotify)&free_tracked_object);
 
     // Load it with the devices that are already present in the system
-    load_devices(proxy);
+    return load_devices(proxy);
 }
 
 void handlers_free()

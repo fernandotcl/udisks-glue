@@ -1,7 +1,7 @@
 /*
  * This file is part of udisks-glue.
  *
- * © 2010 Fernando Tarlá Cardoso Lemos
+ * © 2011 Fernando Tarlá Cardoso Lemos
  *
  * Refer to the LICENSE file for licensing information.
  *
@@ -12,7 +12,7 @@
 
 #include <dbus/dbus-glib.h>
 
-void handlers_init(DBusGProxy *proxy);
+int handlers_init(DBusGProxy *proxy);
 void handlers_free();
 
 void device_added_signal_handler(DBusGProxy *proxy, const char *object_path, gpointer user_data);
