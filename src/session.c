@@ -1,3 +1,12 @@
+/*
+ * This file is part of udisks-glue.
+ *
+ * © 2011 Jan Palus
+ *
+ * Refer to the LICENSE file for licensing information.
+ *
+ */
+
 #include <dbus/dbus-glib.h>
 #include <glib.h>
 #include <string.h>
@@ -70,8 +79,8 @@ static char* get_session_seat_obj_path(const char *session_id)
     GError *error = NULL;
     char *seat_id;
     DBusGProxy *proxy;
-    gboolean res; 
-    
+    gboolean res;
+
     proxy = dbus_g_proxy_new_for_name(dbus_conn, DBUS_COMMON_NAME_CK, session_id, DBUS_INTERFACE_CK_SESSION);
     res = dbus_g_proxy_call(proxy, "GetSeatId", &error,
             G_TYPE_INVALID,

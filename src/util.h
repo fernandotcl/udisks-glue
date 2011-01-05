@@ -2,6 +2,7 @@
  * This file is part of udisks-glue.
  *
  * © 2010 Fernando Tarlá Cardoso Lemos
+ * © 2010 Jan Palus
  *
  * Refer to the LICENSE file for licensing information.
  *
