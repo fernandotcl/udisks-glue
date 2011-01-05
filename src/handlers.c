@@ -151,7 +151,7 @@ static gchar *get_mount_point(DBusGProxy *props_proxy)
 static void load_devices(DBusGProxy *proxy)
 {
     // Get a list of devices
-    GError *error;
+    GError *error = NULL;
     GPtrArray *devices;
     gboolean res = dbus_g_proxy_call(proxy, "EnumerateDevices", &error,
             G_TYPE_INVALID,
