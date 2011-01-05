@@ -20,13 +20,15 @@
 #include "dbus_constants.h"
 #include "filters.h"
 #include "handlers.h"
+#include "session.h"
 #include "util.h"
 
 DBusGConnection *dbus_conn = NULL;
+GMainLoop *loop = NULL;
 
-static GMainLoop *loop = NULL;
 static cfg_t *cfg = NULL;
 static FILE *fpidfile = NULL;
+static int enable_session = 0;
 
 static void signal_handler(int sig)
 {
@@ -38,7 +40,7 @@ static void print_usage(FILE *out)
 {
     fprintf(out, "\
 Usage: \n\
-    udisks-glue [--config file] [--foreground] [--pidfile pidfile]\n\
+    udisks-glue [--config file] [--foreground] [--pidfile pidfile] [--session]\n\
     udisks-glue --help\n");
 }
 
@@ -49,6 +51,7 @@ static int parse_config(int argc, char **argv, int *rc)
         { "foreground", no_argument, 0, 'f' },
         { "help", no_argument, 0, 'h' },
         { "pidfile", required_argument, 0, 'p' },
+        { "session", no_argument, 0, 's' },
         { NULL, 0, 0, 0 }
     };
 
@@ -57,7 +60,7 @@ static int parse_config(int argc, char **argv, int *rc)
     const char *pidfile = NULL;
 
     int opt, option_index = 0;
-    while ((opt = getopt_long(argc, argv, "c:fhp:", long_options, &option_index)) != EOF) {
+    while ((opt = getopt_long(argc, argv, "c:fhp:s", long_options, &option_index)) != EOF) {
         switch ((char)opt) {
             case 'c':
                 config_file = optarg;
@@ -71,6 +74,9 @@ static int parse_config(int argc, char **argv, int *rc)
                 return 1;
             case 'p':
                 pidfile = optarg;
+                break;
+            case 's':
+                enable_session = 1;
                 break;
             default:
                 print_usage(stderr);
@@ -161,6 +167,11 @@ int main(int argc, char **argv)
         goto cleanup;
     }
 
+    if (enable_session) {
+        if (!session_init())
+            goto cleanup;
+    }
+
     proxy = dbus_g_proxy_new_for_name(dbus_conn, DBUS_COMMON_NAME_UDISKS, DBUS_OBJECT_PATH_UDISKS_ROOT, DBUS_INTERFACE_UDISKS);
     handlers_init(proxy);
 
@@ -181,6 +192,7 @@ cleanup:
     if (dbus_conn) dbus_g_connection_unref(dbus_conn);
     if (loop) g_main_loop_unref(loop);
     if (fpidfile) fclose(fpidfile);
+    if (enable_session) session_free();
     handlers_free();
     filters_free();
     return rc;
