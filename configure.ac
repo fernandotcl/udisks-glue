@@ -1,6 +1,6 @@
 AC_PREREQ(2.59c)
 
-AC_INIT([udisks-glue], [1.2.0], [], [udisks-glue])
+AC_INIT([udisks-glue], [1.2.1], [], [udisks-glue])
 
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign])
