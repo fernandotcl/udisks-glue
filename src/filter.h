@@ -16,12 +16,12 @@
 
 typedef struct filter_ filter;
 
-filter *filter_create(const char *match_name);
+filter *filter_create();
 void filter_free(filter *f);
 
 void filter_add_restriction_bool(filter *f, const char *property, int value);
 void filter_add_restriction_string(filter *f, const char *property, const char *value);
 
-const char *filter_matches(filter *f, DBusGProxy *proxy, property_cache *cache);
+int filter_matches(filter *f, DBusGProxy *proxy, property_cache *cache);
 
 #endif

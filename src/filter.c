@@ -31,7 +31,6 @@ typedef struct {
 } restriction;
 
 struct filter_ {
-    gchar *match_name;
     GSList *restrictions;
 };
 
@@ -81,17 +80,14 @@ static int restriction_matches(restriction *r, DBusGProxy *proxy, property_cache
     }
 }
 
-filter *filter_create(const char *match_name)
+filter *filter_create()
 {
-    filter *f = g_malloc0(sizeof(filter));
-    f->match_name = g_strdup(match_name);
-    return f;
+    return g_malloc0(sizeof(filter));
 }
 
 void filter_free(filter *f)
 {
     g_slist_foreach(f->restrictions, (GFunc)restriction_free, NULL);
-    g_free(f->match_name);
     g_free(f);
 }
 
@@ -105,12 +101,12 @@ void filter_add_restriction_string(filter *f, const char *property, const char *
     f->restrictions = g_slist_prepend(f->restrictions, restriction_create_string(property, value));
 }
 
-const char *filter_matches(filter *f, DBusGProxy *proxy, property_cache *cache)
+int filter_matches(filter *f, DBusGProxy *proxy, property_cache *cache)
 {
     for (GSList *entry = f->restrictions; entry; entry = g_slist_next(entry)) {
         restriction *r = (restriction *)entry->data;
         if (!restriction_matches(r, proxy, cache))
-            return f->match_name;
+            return 0;
     }
-    return NULL;
+    return 1;
 }

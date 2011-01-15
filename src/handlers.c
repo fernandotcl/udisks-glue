@@ -14,7 +14,6 @@
 #include <string.h>
 
 #include "dbus_constants.h"
-#include "filters.h"
 #include "globals.h"
 #include "match.h"
 #include "matches.h"
@@ -68,10 +67,9 @@ static void tracked_object_free(tracked_object *tobj)
 static void tracked_object_find_match(tracked_object *tobj, DBusGProxy *props_proxy)
 {
     assert(tobj->match_obj == NULL);
+
     property_cache *cache = property_cache_create();
-    const char *match_name = filters_find_match_name(props_proxy, cache);
-    if (match_name)
-        tobj->match_obj = matches_find_match(match_name);
+    tobj->match_obj = matches_find_match(props_proxy, cache);
     property_cache_free(cache);
 }
 

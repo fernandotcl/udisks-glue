@@ -47,7 +47,7 @@ static filter_option filter_options[NUM_FILTER_OPTIONS] = {
 #undef FILTER_OPTION_BOOL
 #undef FILTER_OPTION_STRING
 
-static GSList *filters = NULL;
+static GHashTable *filters;
 
 static void add_filter_restrictions(filter *f, cfg_t *sec)
 {
@@ -75,30 +75,26 @@ static void add_filter_restrictions(filter *f, cfg_t *sec)
 
 int filters_init(cfg_t *cfg)
 {
+    filters = g_hash_table_new_full(&g_str_hash, &g_str_equal, &g_free, (GDestroyNotify)&filter_free);
+
     int index = cfg_size(cfg, "filter");
     while (index--) {
         cfg_t *sec = cfg_getnsec(cfg, "filter", index);
-        filter *f = filter_create(cfg_title(sec));
-        filters = g_slist_prepend(filters, f);
+        filter *f = filter_create();
         add_filter_restrictions(f, sec);
+        g_hash_table_insert(filters, g_strdup(cfg_title(sec)), f);
     }
     return 1;
 }
 
 void filters_free()
 {
-    g_slist_foreach(filters, (GFunc)filter_free, NULL);
-    g_slist_free(filters);
+    g_hash_table_destroy(filters);
 }
 
-const char *filters_find_match_name(DBusGProxy *proxy, property_cache *cache)
+filter *filters_find_filter_by_name(const char *name)
 {
-    for (GSList *entry = filters; entry; entry = g_slist_next(entry)) {
-        filter *f = (filter *)entry->data;
-        const char *name = filter_matches(f, proxy, cache);
-        if (name) return name;
-    }
-    return NULL;
+    return g_hash_table_lookup(filters, name);
 }
 
 cfg_opt_t *filters_get_cfg_opts()
