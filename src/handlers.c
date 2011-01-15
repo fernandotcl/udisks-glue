@@ -9,12 +9,15 @@
  */
 
 #include <dbus/dbus-glib.h>
+#include <assert.h>
 #include <glib.h>
 #include <string.h>
 
 #include "dbus_constants.h"
 #include "filters.h"
 #include "globals.h"
+#include "match.h"
+#include "matches.h"
 #include "property_cache.h"
 #include "props.h"
 #include "util.h"
@@ -47,16 +50,14 @@ typedef struct {
     } status;
     gchar *device_file;
     gchar *mount_point;
-    const char *post_mount_command;
-    const char *post_unmount_command;
-    const char *post_removal_command;
+    match *match_obj;
 } tracked_object;
 
 void device_added_signal_handler(DBusGProxy *proxy, const char *object_path, gpointer user_data);
 
 static GHashTable *tracked_objects;
 
-static void free_tracked_object(tracked_object *tobj)
+static void tracked_object_free(tracked_object *tobj)
 {
     g_free(tobj->device_file);
     if (tobj->mount_point)
@@ -64,26 +65,45 @@ static void free_tracked_object(tracked_object *tobj)
     g_free(tobj);
 }
 
-static const char *get_commands(tracked_object *tobj, DBusGProxy *props_proxy)
+static void tracked_object_find_match(tracked_object *tobj, DBusGProxy *props_proxy)
 {
+    assert(tobj->match_obj == NULL);
     property_cache *cache = property_cache_create();
-    const char *command = filters_get_command(props_proxy, FILTER_COMMAND_POST_INSERTION, cache);
-    tobj->post_mount_command = filters_get_command(props_proxy, FILTER_COMMAND_POST_MOUNT, cache);
-    tobj->post_unmount_command = filters_get_command(props_proxy, FILTER_COMMAND_POST_UNMOUNT, cache);
-    tobj->post_removal_command = filters_get_command(props_proxy, FILTER_COMMAND_POST_REMOVAL, cache);
+    const char *match_name = filters_find_match_name(props_proxy, cache);
+    if (match_name)
+        tobj->match_obj = matches_find_match(match_name);
     property_cache_free(cache);
+}
 
-    return command;
+static const char *tracked_object_get_post_insertion_command(tracked_object *tobj)
+{
+    return tobj->match_obj ? match_get_post_insertion_command(tobj->match_obj) : NULL;
+}
+
+static const char *tracked_object_get_post_mount_command(tracked_object *tobj)
+{
+    return tobj->match_obj ? match_get_post_mount_command(tobj->match_obj) : NULL;
+}
+
+static const char *tracked_object_get_post_unmount_command(tracked_object *tobj)
+{
+    return tobj->match_obj ? match_get_post_unmount_command(tobj->match_obj) : NULL;
+}
+
+static const char *tracked_object_get_post_removal_command(tracked_object *tobj)
+{
+    return tobj->match_obj ? match_get_post_removal_command(tobj->match_obj) : NULL;
 }
 
 static void post_insertion_procedure(tracked_object *tobj, DBusGProxy *props_proxy)
 {
     g_print("Device file %s inserted\n", tobj->device_file);
 
-    // Look for the commands
-    const char* command = get_commands(tobj, props_proxy);
+    // Find the match for this device
+    tracked_object_find_match(tobj, props_proxy);
 
-    // Run the post-insertion command
+    // Get the post insertion command and run it
+    const char *command = tracked_object_get_post_insertion_command(tobj);
     if (command && command[0]) {
         gchar *expanded = str_replace((gchar *)command, "%device_file", tobj->device_file);
         run_command(expanded);
@@ -96,8 +116,9 @@ static void post_mount_procedure(tracked_object *tobj)
     g_print("Device file %s mounted at %s\n", tobj->device_file, tobj->mount_point);
 
     // Run the post-mount command
-    if (tobj->post_mount_command && tobj->post_mount_command[0]) {
-        gchar *expanded_tmp = str_replace((gchar *)tobj->post_mount_command, "%device_file", tobj->device_file);
+    const char *command = tracked_object_get_post_mount_command(tobj);
+    if (command && command[0]) {
+        gchar *expanded_tmp = str_replace((gchar *)command, "%device_file", tobj->device_file);
         gchar *expanded = str_replace(expanded_tmp, "%mount_point", tobj->mount_point);
         g_free(expanded_tmp);
         run_command(expanded);
@@ -110,8 +131,9 @@ static void post_unmount_procedure(tracked_object *tobj)
     g_print("Device file %s unmounted from %s\n", tobj->device_file, tobj->mount_point);
 
     // Run the post-unmount command
-    if (tobj->post_unmount_command && tobj->post_unmount_command[0]) {
-        gchar *expanded_tmp = str_replace((gchar *)tobj->post_unmount_command, "%device_file", tobj->device_file);
+    const char *command = tracked_object_get_post_unmount_command(tobj);
+    if (command && command[0]) {
+        gchar *expanded_tmp = str_replace((gchar *)command, "%device_file", tobj->device_file);
         gchar *expanded = str_replace(expanded_tmp, "%mount_point", tobj->mount_point);
         g_free(expanded_tmp);
         run_command(expanded);
@@ -128,8 +150,9 @@ static void post_removal_procedure(tracked_object *tobj)
     g_print("Device file %s removed\n", tobj->device_file);
 
     // Run the post-removal command
-    if (tobj->post_removal_command && tobj->post_removal_command[0]) {
-        gchar *expanded = str_replace((gchar *)tobj->post_removal_command, "%device_file", tobj->device_file);
+    const char *command = tracked_object_get_post_removal_command(tobj);
+    if (command && command[0]) {
+        gchar *expanded = str_replace((gchar *)command, "%device_file", tobj->device_file);
         run_command(expanded);
         g_free(expanded);
     }
@@ -179,7 +202,7 @@ static int load_devices(DBusGProxy *proxy)
 int handlers_init(DBusGProxy *proxy)
 {
     // Create the list of tracked objects
-    tracked_objects = g_hash_table_new_full(&g_str_hash, &g_str_equal, &g_free, (GDestroyNotify)&free_tracked_object);
+    tracked_objects = g_hash_table_new_full(&g_str_hash, &g_str_equal, &g_free, (GDestroyNotify)&tracked_object_free);
 
     // Load it with the devices that are already present in the system
     return load_devices(proxy);
@@ -230,7 +253,7 @@ void device_added_signal_handler(DBusGProxy *proxy, const char *object_path, gpo
     // If loading devices on init and device is already mounted
     if (is_mounted) {
         tobj->status = TRACKED_OBJECT_STATUS_MOUNTED;
-        get_commands(tobj, props_proxy);
+        tracked_object_find_match(tobj, props_proxy);
         tobj->mount_point = get_mount_point(props_proxy);
         g_object_unref(props_proxy);
         return;
@@ -326,5 +349,5 @@ void device_removed_signal_handler(DBusGProxy *proxy, const char *object_path, g
 
     // Run the post-removal procedure and free the tracked object
     post_removal_procedure(tobj);
-    free_tracked_object(tobj);
+    tracked_object_free(tobj);
 }

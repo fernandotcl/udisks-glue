@@ -2,12 +2,18 @@ bin_PROGRAMS = udisks-glue
 
 udisks_glue_SOURCES = \
     dbus_constants.h \
+    filter.c \
+    filter.h \
     filters.c \
     filters.h \
     globals.h \
     handlers.c \
     handlers.h \
     main.c \
+    match.c \
+    match.h \
+    matches.c \
+    matches.h \
     props.c \
     props.h \
     property_cache.c \

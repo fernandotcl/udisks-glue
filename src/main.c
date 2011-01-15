@@ -21,6 +21,8 @@
 #include "dbus_constants.h"
 #include "filters.h"
 #include "handlers.h"
+#include "match.h"
+#include "matches.h"
 #include "session.h"
 #include "util.h"
 
@@ -95,22 +97,20 @@ static int parse_config(int argc, char **argv, int *rc)
         }
     }
 
-    cfg_opt_t match_opts[] = {
-        CFG_STR("post_insertion_command", NULL, CFGF_NONE),
-        CFG_STR("post_mount_command", NULL, CFGF_NONE),
-        CFG_STR("post_unmount_command", NULL, CFGF_NONE),
-        CFG_STR("post_removal_command", NULL, CFGF_NONE),
-        CFG_END()
-    };
+    cfg_opt_t *match_opts = match_get_cfg_opts();
+    cfg_opt_t *filter_opts = filters_get_cfg_opts();
 
     cfg_opt_t opts[] = {
-        CFG_SEC("filter", filters_get_cfg_opts(), CFGF_MULTI | CFGF_TITLE),
+        CFG_SEC("filter", filter_opts, CFGF_MULTI | CFGF_TITLE),
         CFG_SEC("match", match_opts, CFGF_MULTI | CFGF_TITLE),
         CFG_SEC("default", match_opts, CFGF_NONE),
         CFG_END()
     };
 
     cfg = cfg_init(opts, CFGF_NONE);
+    match_free_cfg_opts(match_opts);
+    filters_free_cfg_opts(filter_opts);
+
     int res = cfg_parse(cfg, config_file);
     if (config_file_was_allocated)
         free((char *)config_file);
@@ -155,6 +155,9 @@ int main(int argc, char **argv)
     if (!filters_init(cfg))
         goto cleanup;
 
+    if (!matches_init(cfg))
+        goto cleanup;
+
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
     signal(SIGQUIT, signal_handler);
@@ -196,6 +199,7 @@ cleanup:
     if (fpidfile) fclose(fpidfile);
     if (enable_session) session_free();
     handlers_free();
+    matches_free();
     filters_free();
     return rc;
 }

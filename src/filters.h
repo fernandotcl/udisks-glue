@@ -15,19 +15,12 @@
 
 #include "property_cache.h"
 
-typedef enum {
-    FILTER_COMMAND_POST_INSERTION = 0,
-    FILTER_COMMAND_POST_MOUNT,
-    FILTER_COMMAND_POST_UNMOUNT,
-    FILTER_COMMAND_POST_REMOVAL,
-    FILTER_COMMAND_LAST
-} filter_command;
-
-cfg_opt_t *filters_get_cfg_opts();
-
 int filters_init(cfg_t *cfg);
 void filters_free();
 
-const char *filters_get_command(DBusGProxy *proxy, filter_command command, property_cache *cache);
+cfg_opt_t *filters_get_cfg_opts();
+void filters_free_cfg_opts(cfg_opt_t *opts);
+
+const char *filters_find_match_name(DBusGProxy *proxy, property_cache *cache);
 
 #endif

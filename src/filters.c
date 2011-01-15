@@ -7,148 +7,70 @@
  *
  */
 
+#include <dbus/dbus-glib.h>
+#include <assert.h>
 #include <confuse.h>
 #include <glib.h>
-#include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 
-#include "dbus_constants.h"
-#include "filters.h"
-#include "property_cache.h"
-#include "props.h"
-
-#define DEVICE_PROPERTY(type, name) \
-    get_##type##_property(proxy, name, DBUS_INTERFACE_UDISKS_DEVICE)
-
-#define DECLARE_BOOLEAN_FILTER_OPTION(config_key) \
-    CFG_BOOL(#config_key, 0, CFGF_NODEFAULT)
-
-#define DECLARE_STRING_FILTER_OPTION(config_key) \
-    CFG_STR(#config_key, NULL, CFGF_NODEFAULT)
-
-#define IMPLEMENT_BOOLEAN_FILTER(identifier, property) \
-    static int filter_function_##identifier(DBusGProxy *proxy, void *value, property_cache *cache) { \
-        int wanted_value = (cfg_bool_t)value ? BOOL_PROP_TRUE : BOOL_PROP_FALSE; \
-        return get_bool_property_cached(cache, proxy, property, DBUS_INTERFACE_UDISKS_DEVICE) == wanted_value; \
-    }
-
-#define IMPLEMENT_STRING_FILTER(identifier, property) \
-    static int filter_function_##identifier(DBusGProxy *proxy, void *value, property_cache *cache) { \
-        gchar *prop = get_string_property_cached(cache, proxy, property, DBUS_INTERFACE_UDISKS_DEVICE); \
-        return value ? !strcmp((const char *)prop, (const char *)value) : 0; \
-    }
-
-#define LINK_BOOLEAN_FILTER(identifier, config_key) \
-    if (cfg_size(sec, config_key)) { \
-        filter_parameters *fp = g_malloc(sizeof(filter_parameters)); \
-        fp->func = &filter_function_##identifier; \
-        fp->arg = (void *)cfg_getbool(sec, config_key); \
-        f->parameters = g_slist_prepend(f->parameters, fp); \
-    }
-
-#define LINK_STRING_FILTER(identifier, config_key) \
-    if (cfg_size(sec, config_key)) { \
-        filter_parameters *fp = g_malloc(sizeof(filter_parameters)); \
-        fp->func = &filter_function_##identifier; \
-        fp->arg = (void *)cfg_getstr(sec, config_key); \
-        f->parameters = g_slist_prepend(f->parameters, fp); \
-    }
-
-typedef int (*filter_function)(DBusGProxy *, void *, property_cache *);
+#include "filter.h"
 
 typedef struct {
-    filter_function func;
-    void *arg;
-} filter_parameters;
+    enum {
+        FILTER_OPTION_TYPE_BOOL,
+        FILTER_OPTION_TYPE_STRING
+    } type;
+    const char *property_name;
+    const char *config_name;
+    cfg_opt_t confuse_opt;
+} filter_option;
 
-typedef struct {
-    const char *name;
-    GSList *parameters;
-} filter;
+#define FILTER_OPTION_BOOL(property, config) \
+    { FILTER_OPTION_TYPE_BOOL, property, config, CFG_BOOL(config, cfg_false, CFGF_NODEFAULT) }
 
-typedef struct {
-    filter *f;
-    const char *commands[FILTER_COMMAND_LAST];
-} candidate;
+#define FILTER_OPTION_STRING(property, config) \
+    { FILTER_OPTION_TYPE_STRING, property, config, CFG_STR(config, NULL, CFGF_NODEFAULT) }
 
-static cfg_opt_t filter_opts[] = {
-    DECLARE_BOOLEAN_FILTER_OPTION(removable),
-    DECLARE_BOOLEAN_FILTER_OPTION(read_only),
-    DECLARE_BOOLEAN_FILTER_OPTION(optical),
-    DECLARE_BOOLEAN_FILTER_OPTION(disc_closed),
-
-    DECLARE_STRING_FILTER_OPTION(usage),
-    DECLARE_STRING_FILTER_OPTION(type),
-    DECLARE_STRING_FILTER_OPTION(uuid),
-    DECLARE_STRING_FILTER_OPTION(label),
-
-    CFG_END()
+#define NUM_FILTER_OPTIONS 8
+static filter_option filter_options[NUM_FILTER_OPTIONS] = {
+    FILTER_OPTION_BOOL("DeviceIsRemovable", "removable"),
+    FILTER_OPTION_BOOL("DeviceIsReadOnly", "read_only"),
+    FILTER_OPTION_BOOL("DeviceIsOpticalDisc", "optical"),
+    FILTER_OPTION_BOOL("OpticalDiscIsClosed", "disc_closed"),
+    FILTER_OPTION_STRING("IdUsage", "usage"),
+    FILTER_OPTION_STRING("IdType", "type"),
+    FILTER_OPTION_STRING("IdUuid", "uuid"),
+    FILTER_OPTION_STRING("IdLabel", "label")
 };
 
-static candidate *default_candidate = NULL;
-static GSList *candidates = NULL;
+#undef FILTER_OPTION_BOOL
+#undef FILTER_OPTION_STRING
+
 static GSList *filters = NULL;
 
-IMPLEMENT_BOOLEAN_FILTER(removable,           "DeviceIsRemovable")
-IMPLEMENT_BOOLEAN_FILTER(read_only,           "DeviceIsReadOnly")
-IMPLEMENT_BOOLEAN_FILTER(optical,             "DeviceIsOpticalDisc")
-IMPLEMENT_BOOLEAN_FILTER(optical_disc_closed, "OpticalDiscIsClosed")
-
-IMPLEMENT_STRING_FILTER(usage, "IdUsage")
-IMPLEMENT_STRING_FILTER(type,  "IdType")
-IMPLEMENT_STRING_FILTER(uuid,  "IdUuid")
-IMPLEMENT_STRING_FILTER(label, "IdLabel")
-
-static void add_filter_parameters(filter *f, cfg_t *sec)
+static void add_filter_restrictions(filter *f, cfg_t *sec)
 {
-    LINK_BOOLEAN_FILTER(removable,           "removable")
-    LINK_BOOLEAN_FILTER(read_only,           "read_only")
-    LINK_BOOLEAN_FILTER(optical,             "optical")
-    LINK_BOOLEAN_FILTER(optical_disc_closed, "disc_closed")
-
-    LINK_STRING_FILTER(usage, "usage")
-    LINK_STRING_FILTER(type,  "type")
-    LINK_STRING_FILTER(uuid,  "uuid")
-    LINK_STRING_FILTER(label, "label")
-}
-
-static filter *filter_create()
-{
-    return g_malloc0(sizeof(filter));
-}
-
-static void filter_free(filter *f)
-{
-    g_slist_foreach(f->parameters, (GFunc)g_free, NULL);
-    g_slist_free(f->parameters);
-    g_free(f);
-}
-
-static candidate *candidate_create()
-{
-    return g_malloc0(sizeof(candidate));
-}
-
-static void candidate_free(candidate *c)
-{
-    g_free(c);
-}
-
-static void candidate_read_funcs(candidate *c, cfg_t *sec)
-{
-    if (cfg_size(sec, "post_insertion_command"))
-        c->commands[FILTER_COMMAND_POST_INSERTION] = cfg_getstr(sec, "post_insertion_command");
-    if (cfg_size(sec, "post_mount_command"))
-        c->commands[FILTER_COMMAND_POST_MOUNT] = cfg_getstr(sec, "post_mount_command");
-    if (cfg_size(sec, "post_unmount_command"))
-        c->commands[FILTER_COMMAND_POST_UNMOUNT] = cfg_getstr(sec, "post_unmount_command");
-    if (cfg_size(sec, "post_removal_command"))
-        c->commands[FILTER_COMMAND_POST_REMOVAL] = cfg_getstr(sec, "post_removal_command");
-}
-
-cfg_opt_t *filters_get_cfg_opts()
-{
-    return filter_opts;
+    for (int i = 0; i < NUM_FILTER_OPTIONS; ++i) {
+        filter_option *opt = &filter_options[i];
+        if (cfg_size(sec, opt->config_name)) {
+            switch (opt->type) {
+                case FILTER_OPTION_TYPE_BOOL: {
+                    int value = cfg_getbool(sec, opt->config_name) == cfg_true ? 1 : 0;
+                    filter_add_restriction_bool(f, opt->property_name, value);
+                    break;
+                }
+                case FILTER_OPTION_TYPE_STRING: {
+                    const char *value = cfg_getstr(sec, opt->config_name);
+                    filter_add_restriction_string(f, opt->property_name, value);
+                    break;
+                }
+                default:
+                    assert(0);
+                    break;
+            }
+        }
+    }
 }
 
 int filters_init(cfg_t *cfg)
@@ -156,79 +78,42 @@ int filters_init(cfg_t *cfg)
     int index = cfg_size(cfg, "filter");
     while (index--) {
         cfg_t *sec = cfg_getnsec(cfg, "filter", index);
-
-        filter *f = filter_create();
+        filter *f = filter_create(cfg_title(sec));
         filters = g_slist_prepend(filters, f);
-
-        f->name = cfg_title(sec);
-        add_filter_parameters(f, sec);
+        add_filter_restrictions(f, sec);
     }
-
-    index = cfg_size(cfg, "match");
-    while (index--) {
-        cfg_t *sec = cfg_getnsec(cfg, "match", index);
-        const char *title = cfg_title(sec);
-
-        filter *f = NULL;
-        for (GSList *entry = filters; entry; entry = g_slist_next(entry)) {
-            filter *f2 = (filter *)entry->data;
-            if (!strcmp(f2->name, title)) {
-                f = f2;
-                break;
-            }
-        }
-        if (!f) {
-            g_printerr("Unknown filter %s\n", title);
-            return 0;
-        }
-
-        candidate *c = candidate_create();
-        candidates = g_slist_prepend(candidates, c);
-
-        c->f = f;
-        candidate_read_funcs(c, sec);
-    }
-
-    if (cfg_size(cfg, "default")) {
-        default_candidate = candidate_create();
-        candidate_read_funcs(default_candidate, cfg_getsec(cfg, "default"));
-    }
-
     return 1;
 }
 
 void filters_free()
 {
-    g_slist_foreach(candidates, (GFunc)candidate_free, NULL);
-    g_slist_free(candidates);
-
-    if (default_candidate)
-        candidate_free(default_candidate);
-
     g_slist_foreach(filters, (GFunc)filter_free, NULL);
     g_slist_free(filters);
 }
 
-static const candidate *filters_get_candidate(DBusGProxy *proxy, property_cache *cache, filter_command command)
+const char *filters_find_match_name(DBusGProxy *proxy, property_cache *cache)
 {
-    for (GSList *entry = candidates; entry; entry = g_slist_next(entry)) {
-        candidate *c = (candidate *)entry->data;
-        int matched = 1;
-        for (GSList *entry2 = c->f->parameters; entry2; entry2 = g_slist_next(entry2)) {
-            filter_parameters *fp = (filter_parameters *)entry2->data;
-            if (!fp->func(proxy, fp->arg, cache)) {
-                matched = 0;
-                break;
-            }
-        }
-        if (matched && c->commands[command]) return c;
+    for (GSList *entry = filters; entry; entry = g_slist_next(entry)) {
+        filter *f = (filter *)entry->data;
+        const char *name = filter_matches(f, proxy, cache);
+        if (name) return name;
     }
-
-    return default_candidate;
+    return NULL;
 }
 
-const char *filters_get_command(DBusGProxy *proxy, filter_command command, property_cache *cache)
+cfg_opt_t *filters_get_cfg_opts()
 {
-    const candidate *c = filters_get_candidate(proxy, cache, command);
-    return c ? c->commands[command] : NULL;
+    cfg_opt_t *opts = malloc(sizeof(cfg_opt_t) * (NUM_FILTER_OPTIONS + 1));
+    for (int i = 0; i < NUM_FILTER_OPTIONS; ++i)
+        memcpy(&opts[i], &filter_options[i].confuse_opt, sizeof(cfg_opt_t));
+
+    cfg_opt_t end = CFG_END();
+    memcpy(&opts[NUM_FILTER_OPTIONS], &end, sizeof(cfg_opt_t));
+
+    return opts;
+}
+
+void filters_free_cfg_opts(cfg_opt_t *opts)
+{
+    free(opts);
 }
