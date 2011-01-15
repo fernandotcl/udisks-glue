@@ -1,8 +1,8 @@
 /*
  * This file is part of udisks-glue.
  *
- * © 2011 Fernando Tarlá Cardoso Lemos
- * © 2011 Jan Palus
+ * © 2010-2011 Fernando Tarlá Cardoso Lemos
+ * © 2010-2011 Jan Palus
  *
  * Refer to the LICENSE file for licensing information.
  *
@@ -15,6 +15,7 @@
 #include "dbus_constants.h"
 #include "filters.h"
 #include "globals.h"
+#include "property_cache.h"
 #include "props.h"
 #include "util.h"
 
@@ -65,12 +66,12 @@ static void free_tracked_object(tracked_object *tobj)
 
 static const char *get_commands(tracked_object *tobj, DBusGProxy *props_proxy)
 {
-    filter_cache *cache = filter_cache_create();
+    property_cache *cache = property_cache_create();
     const char *command = filters_get_command(props_proxy, FILTER_COMMAND_POST_INSERTION, cache);
     tobj->post_mount_command = filters_get_command(props_proxy, FILTER_COMMAND_POST_MOUNT, cache);
     tobj->post_unmount_command = filters_get_command(props_proxy, FILTER_COMMAND_POST_UNMOUNT, cache);
     tobj->post_removal_command = filters_get_command(props_proxy, FILTER_COMMAND_POST_REMOVAL, cache);
-    filter_cache_free(cache);
+    property_cache_free(cache);
 
     return command;
 }

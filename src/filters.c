@@ -1,7 +1,7 @@
 /*
  * This file is part of udisks-glue.
  *
- * © 2010 Fernando Tarlá Cardoso Lemos
+ * © 2010-2011 Fernando Tarlá Cardoso Lemos
  *
  * Refer to the LICENSE file for licensing information.
  *
@@ -14,18 +14,11 @@
 
 #include "dbus_constants.h"
 #include "filters.h"
+#include "property_cache.h"
 #include "props.h"
 
 #define DEVICE_PROPERTY(type, name) \
     get_##type##_property(proxy, name, DBUS_INTERFACE_UDISKS_DEVICE)
-
-#define DECLARE_BOOLEAN_FILTER_CACHE(identifier) \
-    int identifier; \
-    int identifier##_is_hot;
-
-#define DECLARE_STRING_FILTER_CACHE(identifier) \
-    gchar *identifier; \
-    int identifier##_is_hot;
 
 #define DECLARE_BOOLEAN_FILTER_OPTION(config_key) \
     CFG_BOOL(#config_key, 0, CFGF_NODEFAULT)
@@ -34,23 +27,15 @@
     CFG_STR(#config_key, NULL, CFGF_NODEFAULT)
 
 #define IMPLEMENT_BOOLEAN_FILTER(identifier, property) \
-    static int filter_function_##identifier(DBusGProxy *proxy, void *value, filter_cache *cache) { \
-        if (!cache->boolean_values.identifier##_is_hot) { \
-            cache->boolean_values.identifier = DEVICE_PROPERTY(bool, property); \
-            cache->boolean_values.identifier##_is_hot = 1; \
-        } \
+    static int filter_function_##identifier(DBusGProxy *proxy, void *value, property_cache *cache) { \
         int wanted_value = (cfg_bool_t)value ? BOOL_PROP_TRUE : BOOL_PROP_FALSE; \
-        return cache->boolean_values.identifier == wanted_value; \
+        return get_bool_property_cached(cache, proxy, property, DBUS_INTERFACE_UDISKS_DEVICE) == wanted_value; \
     }
 
 #define IMPLEMENT_STRING_FILTER(identifier, property) \
-    static int filter_function_##identifier(DBusGProxy *proxy, void *value, filter_cache *cache) { \
-        if (!cache->string_values.identifier##_is_hot) { \
-            cache->string_values.identifier = DEVICE_PROPERTY(string, property); \
-            cache->to_free = g_slist_prepend(cache->to_free, cache->string_values.identifier); \
-            cache->string_values.identifier##_is_hot = 1; \
-        } \
-        return !strcmp((const char *)cache->string_values.identifier, (const char *)value); \
+    static int filter_function_##identifier(DBusGProxy *proxy, void *value, property_cache *cache) { \
+        gchar *prop = get_string_property_cached(cache, proxy, property, DBUS_INTERFACE_UDISKS_DEVICE); \
+        return value ? !strcmp((const char *)prop, (const char *)value) : 0; \
     }
 
 #define LINK_BOOLEAN_FILTER(identifier, config_key) \
@@ -69,7 +54,7 @@
         f->parameters = g_slist_prepend(f->parameters, fp); \
     }
 
-typedef int (*filter_function)(DBusGProxy *, void *, filter_cache *);
+typedef int (*filter_function)(DBusGProxy *, void *, property_cache *);
 
 typedef struct {
     filter_function func;
@@ -85,24 +70,6 @@ typedef struct {
     filter *f;
     const char *commands[FILTER_COMMAND_LAST];
 } candidate;
-
-struct filter_cache_ {
-    struct {
-        DECLARE_BOOLEAN_FILTER_CACHE(removable)
-        DECLARE_BOOLEAN_FILTER_CACHE(read_only)
-        DECLARE_BOOLEAN_FILTER_CACHE(optical)
-        DECLARE_BOOLEAN_FILTER_CACHE(optical_disc_closed)
-    } boolean_values;
-
-    struct {
-        DECLARE_STRING_FILTER_CACHE(usage)
-        DECLARE_STRING_FILTER_CACHE(type)
-        DECLARE_STRING_FILTER_CACHE(uuid)
-        DECLARE_STRING_FILTER_CACHE(label)
-    } string_values;
-
-    GSList *to_free;
-};
 
 static cfg_opt_t filter_opts[] = {
     DECLARE_BOOLEAN_FILTER_OPTION(removable),
@@ -242,18 +209,7 @@ void filters_free()
     g_slist_free(filters);
 }
 
-filter_cache *filter_cache_create()
-{
-    return g_malloc0(sizeof(filter_cache));
-}
-
-void filter_cache_free(filter_cache *cache)
-{
-    g_slist_foreach(cache->to_free, (GFunc)g_free, NULL);
-    g_free(cache);
-}
-
-static const candidate *filters_get_candidate(DBusGProxy *proxy, filter_command command, filter_cache *cache)
+static const candidate *filters_get_candidate(DBusGProxy *proxy, property_cache *cache, filter_command command)
 {
     for (GSList *entry = candidates; entry; entry = g_slist_next(entry)) {
         candidate *c = (candidate *)entry->data;
@@ -271,8 +227,8 @@ static const candidate *filters_get_candidate(DBusGProxy *proxy, filter_command 
     return default_candidate;
 }
 
-const char *filters_get_command(DBusGProxy *proxy, filter_command command, filter_cache *cache)
+const char *filters_get_command(DBusGProxy *proxy, filter_command command, property_cache *cache)
 {
-    const candidate *c = filters_get_candidate(proxy, command, cache);
+    const candidate *c = filters_get_candidate(proxy, cache, command);
     return c ? c->commands[command] : NULL;
 }

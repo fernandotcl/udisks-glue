@@ -10,6 +10,8 @@ udisks_glue_SOURCES = \
     main.c \
     props.c \
     props.h \
+    property_cache.c \
+    property_cache.h \
     session.c \
     session.h \
     util.c \
