@@ -20,6 +20,8 @@ udisks_glue_SOURCES = \
     property_cache.h \
     session.c \
     session.h \
+    tracked_object.c \
+    tracked_object.h \
     util.c \
     util.h
 
