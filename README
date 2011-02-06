@@ -41,8 +41,20 @@ Future goals
 ============
 
 Our main goal is to expand the current functionality in order to provide a
-decent replacement for disk-related use of halevt. Eventually, if it turns out
-to be easy enough, we might support more events related to DeviceKit too.
+decent replacement for disk-related use of halevt. Other stuff that's not part
+of udisks might be implemented as well, if it's related enough and not a
+complete hack.
+
+One short-term goal is to provide automatic notifications for mount and
+unmount events (using the FreeDesktop notification standards, preferably).
+
+
+Reporting bugs
+==============
+
+Please use the GitHub issue tracker to post bug reports. If the issue hasn't
+been reported yet and you have a patch, you might skip that step and send me
+the patch directly and I'll apply it as soon as possible.
 
 
 Contributing
@@ -60,6 +72,11 @@ Fernando Tarlá Cardoso Lemos <fernandotcl AT gmail.com>
 Please format your patches with "git format-patch" and then attach them to an
 e-mail instead of sending the patches inlined in the message. This makes it
 easier for me to apply them.
+
+Another option is to fork the project on GitHub and send me pull requests.
+
+If you want to implement a new feature, please ping me first so that we can
+discuss it and also so that we don't end up implementing the same thing twice.
 
 
 Authors
