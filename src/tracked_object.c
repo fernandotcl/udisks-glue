@@ -11,6 +11,7 @@
 #include <glib.h>
 
 #include "dbus_constants.h"
+#include "globals.h"
 #include "match.h"
 #include "matches.h"
 #include "property_cache.h"
@@ -19,6 +20,7 @@
 
 struct tracked_object_ {
     tracked_object_status status;
+    DBusGProxy *device_proxy;
     DBusGProxy *props_proxy;
     property_cache *props_cache;
     gchar *device_file;
@@ -26,35 +28,40 @@ struct tracked_object_ {
     match *match_obj;
 };
 
-tracked_object *tracked_object_create(DBusGProxy *props_proxy)
+tracked_object *tracked_object_create(const char *object_path)
 {
     // Allocate the memory
     tracked_object *tobj = g_malloc0(sizeof(tracked_object));
 
+    // Create the proxies
+    tobj->device_proxy = dbus_g_proxy_new_for_name(dbus_conn, DBUS_COMMON_NAME_UDISKS, object_path, DBUS_INTERFACE_UDISKS_DEVICE);
+    tobj->props_proxy = dbus_g_proxy_new_for_name(dbus_conn, DBUS_COMMON_NAME_UDISKS, object_path, DBUS_INTERFACE_DBUS_PROPERTIES);
+
     // Get the device file
-    tobj->device_file = get_string_property(props_proxy, "DeviceFile", DBUS_INTERFACE_UDISKS_DEVICE);
+    tobj->device_file = get_string_property(tobj->props_proxy, "DeviceFile", DBUS_INTERFACE_UDISKS_DEVICE);
     if (!tobj->device_file) {
+        g_object_unref(tobj->device_proxy);
+        g_object_unref(tobj->props_proxy);
         g_free(tobj);
         return NULL;
     }
-
-    // Reference the properties proxy
-    tobj->props_proxy = props_proxy;
-    g_object_ref(props_proxy);
 
     // Create a new cache
     tobj->props_cache = property_cache_create();
 
     // Get a weak reference to the match object
-    tobj->match_obj = matches_find_match(props_proxy, tobj->props_cache);
+    tobj->match_obj = matches_find_match(tobj->props_proxy, tobj->props_cache);
 
     return tobj;
 }
 
 void tracked_object_free(tracked_object *tobj)
 {
-    // Free the properties proxy and the cache
+    // Free the proxies
+    g_object_unref(tobj->device_proxy);
     g_object_unref(tobj->props_proxy);
+
+    // Free the properties cache
     property_cache_free(tobj->props_cache);
 
     // Free the device file
@@ -134,4 +141,37 @@ const char *tracked_object_get_post_unmount_command(tracked_object *tobj)
 const char *tracked_object_get_post_removal_command(tracked_object *tobj)
 {
     return tobj->match_obj ? match_get_post_removal_command(tobj->match_obj) : NULL;
+}
+
+void tracked_object_automount_if_needed(tracked_object *tobj)
+{
+    if (!tobj->match_obj || !match_get_automount(tobj->match_obj))
+        return;
+
+    g_print("Trying to automount %s...\n", tobj->device_file);
+
+    GError *error = NULL;
+    gchar *mount_point = NULL;
+    gboolean res = dbus_g_proxy_call(tobj->device_proxy, "FilesystemMount", &error,
+            G_TYPE_STRING, match_get_automount_filesystem(tobj->match_obj),
+            G_TYPE_STRV, match_get_automount_options(tobj->match_obj),
+            G_TYPE_INVALID,
+            G_TYPE_STRING, &mount_point,
+            G_TYPE_INVALID);
+
+    if (res) {
+        if (mount_point) {
+            if (tobj->mount_point)
+                g_free(tobj->mount_point);
+            tobj->mount_point = mount_point;
+            g_print("Successfully automounted %s at %s\n", tobj->device_file, mount_point);
+        }
+        else {
+            g_print("Successfully automounted %s\n", tobj->device_file);
+        }
+    }
+    else {
+        g_printerr("Failed to automount %s: %s\n", tobj->device_file, error->message);
+        g_error_free(error);
+    }
 }

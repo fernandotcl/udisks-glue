@@ -21,7 +21,7 @@ typedef enum {
 
 typedef struct tracked_object_ tracked_object;
 
-tracked_object *tracked_object_create(DBusGProxy *props_proxy);
+tracked_object *tracked_object_create(const char *object_path);
 void tracked_object_free();
 
 tracked_object_status tracked_object_get_status(tracked_object *tobj);
@@ -37,5 +37,7 @@ const char *tracked_object_get_post_insertion_command(tracked_object *tobj);
 const char *tracked_object_get_post_mount_command(tracked_object *tobj);
 const char *tracked_object_get_post_unmount_command(tracked_object *tobj);
 const char *tracked_object_get_post_removal_command(tracked_object *tobj);
+
+void tracked_object_automount_if_needed(tracked_object *tobj);
 
 #endif

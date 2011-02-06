@@ -26,6 +26,10 @@ void match_free_cfg_opts(cfg_opt_t *opts);
 
 int match_matches(match *m, DBusGProxy *proxy, property_cache *cache);
 
+int match_get_automount(match *m);
+gchar *match_get_automount_filesystem(match *m);
+gchar **match_get_automount_options(match *m);
+
 const char *match_get_post_insertion_command(match *m);
 const char *match_get_post_mount_command(match *m);
 const char *match_get_post_unmount_command(match *m);

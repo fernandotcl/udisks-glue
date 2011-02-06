@@ -12,7 +12,6 @@
 #include <glib.h>
 
 #include "dbus_constants.h"
-#include "globals.h"
 #include "handlers.h"
 #include "props.h"
 #include "tracked_object.h"
@@ -32,6 +31,9 @@ static void post_insertion_procedure(tracked_object *tobj)
         run_command(expanded);
         g_free(expanded);
     }
+
+    // Try to automount the tracked object
+    tracked_object_automount_if_needed(tobj);
 }
 
 static void post_mount_procedure(tracked_object *tobj)
@@ -130,9 +132,7 @@ void device_added_signal_handler(DBusGProxy *proxy, const char *object_path, gpo
     g_hash_table_remove(tracked_objects, object_path);
 
     // Create the tracked object
-    DBusGProxy *props_proxy = dbus_g_proxy_new_for_name(dbus_conn, DBUS_COMMON_NAME_UDISKS, object_path, DBUS_INTERFACE_DBUS_PROPERTIES);
-    tracked_object *tobj = tracked_object_create(props_proxy);
-    g_object_unref(props_proxy);
+    tracked_object *tobj = tracked_object_create(object_path);
 
     // Skip system internal devices
     int is_system_internal = tracked_object_get_bool_property(tobj, "DeviceIsSystemInternal", 0);
