@@ -89,7 +89,8 @@ int filters_init(cfg_t *cfg)
 
 void filters_free()
 {
-    g_hash_table_destroy(filters);
+    if (filters)
+        g_hash_table_destroy(filters);
 }
 
 filter *filters_find_filter_by_name(const char *name)
