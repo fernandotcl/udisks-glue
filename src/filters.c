@@ -39,7 +39,7 @@ static filter_option filter_options[NUM_FILTER_OPTIONS] = {
     FILTER_OPTION_BOOL("DeviceIsPartition", "partition"),
     FILTER_OPTION_BOOL("DeviceIsPartitionTable", "partition_table"),
     FILTER_OPTION_BOOL("DeviceIsOpticalDisc", "optical"),
-    FILTER_OPTION_BOOL("OpticalDiscIsClosed", "disc_closed"),
+    FILTER_OPTION_BOOL("OpticalDiscIsClosed", "optical_disc_closed"),
     FILTER_OPTION_STRING("IdUsage", "usage"),
     FILTER_OPTION_STRING("IdType", "type"),
     FILTER_OPTION_STRING("IdUuid", "uuid"),
