@@ -32,10 +32,12 @@ typedef struct {
 #define FILTER_OPTION_STRING(property, config) \
     { FILTER_OPTION_TYPE_STRING, property, config, CFG_STR(config, NULL, CFGF_NODEFAULT) }
 
-#define NUM_FILTER_OPTIONS 8
+#define NUM_FILTER_OPTIONS 10
 static filter_option filter_options[NUM_FILTER_OPTIONS] = {
     FILTER_OPTION_BOOL("DeviceIsRemovable", "removable"),
     FILTER_OPTION_BOOL("DeviceIsReadOnly", "read_only"),
+    FILTER_OPTION_BOOL("DeviceIsPartition", "partition"),
+    FILTER_OPTION_BOOL("DeviceIsPartitionTable", "partition_table"),
     FILTER_OPTION_BOOL("DeviceIsOpticalDisc", "optical"),
     FILTER_OPTION_BOOL("OpticalDiscIsClosed", "disc_closed"),
     FILTER_OPTION_STRING("IdUsage", "usage"),
