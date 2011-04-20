@@ -1,7 +1,7 @@
 /*
  * This file is part of udisks-glue.
  *
- * © 2010 Fernando Tarlá Cardoso Lemos
+ * © 2010-2011 Fernando Tarlá Cardoso Lemos
  * © 2010 Jan Palus
  *
  * Refer to the LICENSE file for licensing information.
@@ -52,12 +52,19 @@ void run_command(const char *command)
 void daemonize()
 {
     pid_t pid;
-    if ((pid = fork()) != 0)
-        exit(0);
+    if ((pid = fork()) != 0) {
+        if (pid == (pid_t)-1) {
+            perror("fork");
+            exit(1);
+        }
+        else {
+            exit(0);
+        }
+    }
 
     umask(0);
 
-    if (setsid() == (pid_t) -1) {
+    if (setsid() == (pid_t)-1) {
         perror("setsid");
         exit(EXIT_FAILURE);
     }
