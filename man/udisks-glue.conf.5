@@ -1,0 +1,158 @@
+.TH UDISKS\-GLUE.CONF 5 2011-04-20 "udisks\-glue" "udisks\-glue Manual"
+.SH NAME
+udisks\-glue.conf \- udisks-glue configuration file format
+.SH SYNOPSIS
+.I ~/.udisks\-glue.conf
+.br
+.I $XDG_CONFIG_HOME\fR/udisks\-glue/config
+.br
+/etc/udisks\-glue.conf
+.br
+.I $XDG_CONFIG_DIRS\fR/udisks\-glue/config
+.SH DESCRIPTION
+udisks\-glue is configured by a series of match directives referencing filter directives. Filter directives define parameters that filter the UDisks events. Match directives specify actions to be taken by udisks\-glue in case the corresponded filter matches.
+
+Filter and match directives can be specified in any order. You should use unique names for filter directives. The rules are evaluated in the order the match directives are specified. A default directive is a special directive used as a fallback in case no other directives match. It does not reference a filter directive. You may choose not to specify a default directive.
+
+Due to the way the rules are evaluated, it's recommended that more specific match directives are defined before less specific ones. If a match directive does not specify one of the available actions, another directive may be chosen. The currently available match directives are:
+.TP 25
+.B automount
+If set, try to automatically mount the device (unset by default)
+.TP
+.B automount_filesystem
+Filesystem type to use when automounting the device
+.TP
+.B automount_options
+List of options to use when automounting the device
+.TP
+.B post_insertion_command
+Command to run after a device is inserted or after its media has been made available
+.TP
+.B post_mount_command
+Command to run after a device has been mounted
+.TP
+.B post_unmount_command
+Command to run after a device has been unmounted
+.TP
+.B post_removal_command
+Command to run after a device or its media has been removed
+.PP
+udisks\-glue will substitute some tokens with information about the device in each of the commands listed above:
+.TP 15
+.B %device_file
+Path to the device file
+.TP
+.B %mount_point
+Last known mount point for the device (only replaced in \fBpost_mount_command\fR and \fBpost_unmount_command\fR)
+.PP
+The currently supported filter parameters are:
+.TP 31
+.B label (string)
+User\-visible label of the detected file system
+.TP
+.B optical (boolean)
+Set if the device uses optical disc as its media
+.TP
+.B optical_disc_closed (boolean)
+Set if the optical disc is closed
+.TP
+.B partition (boolean)
+Set if the device is a partition of another device
+.TP
+.B partition_table (boolean)
+Set if the device has a partition table
+.TP
+.B readonly (boolean)
+Set if the device is a ready\-only device
+.TP
+.B removable (boolean)
+Set if the device is a removable device
+.TP
+.B type (string)
+Extended information about the device, generally set to the name of the detected file system if the \fBusage\fR property is set to \fIfilesystem
+.TP
+.B usage (string)
+The result of probing for signatures on the block device, generally set to \fIfilesystem\fR if a mountable file system was detected
+.TP
+.B uuid (string)
+UUID of the detected file system
+.PP
+Note that the rules are evaluated only at the time the device or its media is inserted. Internal drives are always ignored.
+
+.SH EXAMPLE
+The following configuration example shows how you can automount USB pendrives and similar devices. Notifications are provided by a custom script that could display on\-screen information or provide notifications in some other way:
+
+.nf
+filter disks {
+    optical = false
+    partition_table = false
+    usage = filesystem
+}
+
+match disks {
+    automount = true
+    automount_options = sync
+    post_mount_command = "mount\-notify mounted %device_file %mount_point"
+    post_unmount_command = "mount\-notify unmounted %device_file %mount_point"
+}
+.fi
+
+A more complex example shows how the filters can be used to mount optical and non\-optical media (USB pendrives and the like) using different mount options and how a specific program can be launched on non\-closed optical discs.
+
+.nf
+#
+# Filters
+#
+
+filter disks {
+    optical = false
+    partition_table = false
+    usage = filesystem
+}
+
+filter burnable {
+    optical = true
+    disc_closed = false
+}
+
+filter optical {
+    optical = true
+}
+
+#
+# The default entry (only used if no filters match)
+#
+
+default {
+    post_insertion_command = "insertion\-notify %device_file"
+}
+
+#
+# Additional entries
+#
+
+match disks {
+    automount = true
+    automount_options = { sync, noatime }
+    post_mount_command = "mount\-notify mounted %device_file %mount_point"
+    post_unmount_command = "mount\-notify unmounted %device_file %mount_point"
+}
+
+match burnable {
+    post_insertion_command = "k3b %device_file"
+    post_mount_command = "mount\-notify mounted %device_file %mount_point"
+    post_insertion_command = "udisks \-\-mount %device_file \-\-mount\-options ro"
+}
+
+match optical {
+    automount = true
+    automount_options = ro
+    post_mount_command = "mount\-notify mounted %device_file %mount_point"
+    post_insertion_command = "udisks \-\-mount %device_file \-\-mount\-options ro"
+}
+.fi
+.SH SEE ALSO
+.B udisks\fR(1),
+.B udisks\-glue\fR(1)
+.B udisks\fR(7),
+.B udisks\-daemon\fR(8)
