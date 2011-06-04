@@ -11,7 +11,8 @@ udisks\-glue \- A tool to associate udisks events to user\-defined actions
 .B udisks\-glue
 [\fB\-h\fR]
 .SH DESCRIPTION
-udisks\-glue listens for UDisks DBus events and reacts to them according to the configuration.
+udisks\-glue listens for UDisks DBus events and reacts to them according to the configuration. It can be used to automatically mount removable devices or perform arbitrary actions in response to events related to removable devices.
+.SH OPTIONS
 .TP 26
 .B \-c\fR/\fB\-\-config \fIconfig\-file
 Use \fIconfig\-file\fR as the configuration file
@@ -27,9 +28,8 @@ Use \fIpidfile\fR file as the pidfile
 .TP
 .B \-s\fR/\fB\-\-session
 Enable ConsoleKit session support
-
-.TP
-If no configuration file is specified by command line arguments, udisks\-glue looks for the following configuration files (in this order):
+.SH FILES
+A configuration file must exist or udisks\-glue will fail to start up. If no configuration file is specified by command line arguments, udisks\-glue will look for the following configuration files (in this order):
 .TP 3
 .B 1.
 .I $HOME\fB/.udisks\-glue.conf
@@ -42,8 +42,6 @@ If no configuration file is specified by command line arguments, udisks\-glue lo
 .TP
 .B 4.
 .I $DIR\fB/udisks\-glue/config\fR for each dir in \fI$XDG_CONFIG_DIRS
-.PP
-A configuration file must exist or otherwise udisks\-glue will fail to start up.
 .SH SEE ALSO
 .B udisks\fR(1),
 .B udisks\-glue.conf\fR(5)
