@@ -11,26 +11,38 @@
 #include <assert.h>
 #include <confuse.h>
 #include <glib.h>
-#include <string.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "filter.h"
 
 typedef struct {
     enum {
         FILTER_OPTION_TYPE_BOOL,
-        FILTER_OPTION_TYPE_STRING
+        FILTER_OPTION_TYPE_STRING,
+        FILTER_OPTION_TYPE_CUSTOM
     } type;
-    const char *property_name;
+    union {
+        const char *property_name;
+        struct {
+            custom_filter match_func;
+            GDestroyNotify free_func;
+            void *cookie;
+        } custom;
+    };
     const char *config_name;
     cfg_opt_t confuse_opt;
 } filter_option;
 
 #define FILTER_OPTION_BOOL(property, config) \
-    { FILTER_OPTION_TYPE_BOOL, property, config, CFG_BOOL(config, cfg_false, CFGF_NODEFAULT) }
+    { FILTER_OPTION_TYPE_BOOL, { property }, config, CFG_BOOL(config, cfg_false, CFGF_NODEFAULT) }
 
 #define FILTER_OPTION_STRING(property, config) \
-    { FILTER_OPTION_TYPE_STRING, property, config, CFG_STR(config, NULL, CFGF_NODEFAULT) }
+    { FILTER_OPTION_TYPE_STRING, { property }, config, CFG_STR(config, NULL, CFGF_NODEFAULT) }
+
+#define FILTER_OPTION_CUSTOM(match_func, free_func, cookie, config) \
+    { FILTER_OPTION_TYPE_CUSTOM, custom: { match_func, free_func, cookie }, config, CFG_BOOL(config, cfg_false, CFGF_NODEFAULT) }
 
 #define NUM_FILTER_OPTIONS 10
 static filter_option filter_options[NUM_FILTER_OPTIONS] = {
@@ -65,6 +77,11 @@ static void add_filter_restrictions(filter *f, cfg_t *sec)
                 case FILTER_OPTION_TYPE_STRING: {
                     const char *value = cfg_getstr(sec, opt->config_name);
                     filter_add_restriction_string(f, opt->property_name, value);
+                    break;
+                }
+                case FILTER_OPTION_TYPE_CUSTOM: {
+                    intptr_t value = cfg_getbool(sec, opt->config_name) == cfg_true ? 1 : 0;
+                    filter_add_restriction_custom(f, opt->custom.match_func, opt->custom.free_func, opt->custom.cookie, value);
                     break;
                 }
                 default:
