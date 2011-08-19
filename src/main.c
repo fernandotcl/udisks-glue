@@ -114,8 +114,13 @@ static int parse_config(int argc, char **argv, int *rc)
     int res = cfg_parse(cfg, config_file);
     if (config_file_was_allocated)
         free((char *)config_file);
-    if (res == CFG_PARSE_ERROR)
+    if (res == CFG_FILE_ERROR) {
+        g_printerr("Unable to read the config file at ``%s''\n", config_file);
         return 1;
+    }
+    else if (res == CFG_PARSE_ERROR) {
+        return 1;
+    }
 
     if (do_daemonize)
         daemonize();
