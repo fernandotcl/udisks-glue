@@ -28,6 +28,35 @@
         } \
     } while (0)
 
+#define IMPLEMENT_GET_NUMBER_PROPERTY(prefix, c_type, glib_get_type) \
+    c_type get_##prefix##_property(DBusGProxy *proxy, const char *name, const char *interface, int *success) \
+    { \
+        GValue value = {0, }; \
+        GError *error = NULL; \
+        if (!dbus_g_proxy_call(proxy, "Get", &error, \
+                    G_TYPE_STRING, interface, \
+                    G_TYPE_STRING, name, \
+                    G_TYPE_INVALID, \
+                    G_TYPE_VALUE, &value, \
+                    G_TYPE_INVALID)) { \
+            g_printerr("Unable to get property \"%s\": %s\n", name, error->message); \
+            g_error_free(error); \
+            if (success) \
+                success = 0; \
+            return 0; \
+        } \
+        if (success) \
+            *success = 1; \
+        return g_value_get_##glib_get_type(&value); \
+    }
+
+IMPLEMENT_GET_NUMBER_PROPERTY(int16, int16_t, int)
+IMPLEMENT_GET_NUMBER_PROPERTY(int32, int32_t, int)
+IMPLEMENT_GET_NUMBER_PROPERTY(int64, int64_t, int64)
+IMPLEMENT_GET_NUMBER_PROPERTY(uint16, uint16_t, uint)
+IMPLEMENT_GET_NUMBER_PROPERTY(uint32, uint32_t, uint)
+IMPLEMENT_GET_NUMBER_PROPERTY(uint64, uint64_t, uint64)
+
 int get_bool_property(DBusGProxy *proxy, const char *name, const char *interface)
 {
     GET_PROPERTY_PREAMBLE(BOOL_PROP_ERROR, interface);
