@@ -40,7 +40,7 @@ typedef struct {
 static int custom_optical_disc_has_audio_tracks(DBusGProxy *proxy, property_cache *cache, void *cookie)
 {
     int success;
-    uint32_t num_audio_tracks = get_uint32_property(proxy, "OpticalDiscNumAudioTracks", DBUS_INTERFACE_UDISKS_DEVICE, &success);
+    uint32_t num_audio_tracks = get_uint32_property_cached(cache, proxy, "OpticalDiscNumAudioTracks", DBUS_INTERFACE_UDISKS_DEVICE, &success);
     if (success)
         return num_audio_tracks > 0 ? BOOL_PROP_TRUE : BOOL_PROP_FALSE;
     else
@@ -50,10 +50,10 @@ static int custom_optical_disc_has_audio_tracks(DBusGProxy *proxy, property_cach
 static int custom_optical_disc_has_audio_tracks_only(DBusGProxy *proxy, property_cache *cache, void *cookie)
 {
     int success;
-    uint32_t num_tracks = get_uint32_property(proxy, "OpticalDiscNumTracks", DBUS_INTERFACE_UDISKS_DEVICE, &success);
+    uint32_t num_tracks = get_uint32_property_cached(cache, proxy, "OpticalDiscNumTracks", DBUS_INTERFACE_UDISKS_DEVICE, &success);
     if (!success)
         return BOOL_PROP_ERROR;
-    uint32_t num_audio_tracks = get_uint32_property(proxy, "OpticalDiscNumAudioTracks", DBUS_INTERFACE_UDISKS_DEVICE, &success);
+    uint32_t num_audio_tracks = get_uint32_property_cached(cache, proxy, "OpticalDiscNumAudioTracks", DBUS_INTERFACE_UDISKS_DEVICE, &success);
     if (!success)
         return BOOL_PROP_ERROR;
     return num_tracks > 0 && num_tracks == num_audio_tracks ? BOOL_PROP_TRUE : BOOL_PROP_FALSE;
