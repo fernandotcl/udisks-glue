@@ -46,7 +46,9 @@ of udisks might be implemented as well, if it's related enough and not a
 complete hack.
 
 One short-term goal is to provide automatic notifications for mount and
-unmount events (using the FreeDesktop notification standards, preferably).
+unmount events (using the FreeDesktop notification standards, preferably). A
+more ambitious goal is to provide scripting support so that users can create
+their own filter parameters.
 
 
 Reporting bugs
