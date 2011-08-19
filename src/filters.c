@@ -15,7 +15,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dbus_constants.h"
 #include "filter.h"
+#include "props.h"
 
 typedef struct {
     enum {
@@ -35,6 +37,28 @@ typedef struct {
     cfg_opt_t confuse_opt;
 } filter_option;
 
+static int custom_optical_disc_has_audio_tracks(DBusGProxy *proxy, property_cache *cache, void *cookie)
+{
+    int success;
+    uint32_t num_audio_tracks = get_uint32_property(proxy, "OpticalDiscNumAudioTracks", DBUS_INTERFACE_UDISKS_DEVICE, &success);
+    if (success)
+        return num_audio_tracks > 0 ? BOOL_PROP_TRUE : BOOL_PROP_FALSE;
+    else
+        return BOOL_PROP_ERROR;
+}
+
+static int custom_optical_disc_has_audio_tracks_only(DBusGProxy *proxy, property_cache *cache, void *cookie)
+{
+    int success;
+    uint32_t num_tracks = get_uint32_property(proxy, "OpticalDiscNumTracks", DBUS_INTERFACE_UDISKS_DEVICE, &success);
+    if (!success)
+        return BOOL_PROP_ERROR;
+    uint32_t num_audio_tracks = get_uint32_property(proxy, "OpticalDiscNumAudioTracks", DBUS_INTERFACE_UDISKS_DEVICE, &success);
+    if (!success)
+        return BOOL_PROP_ERROR;
+    return num_tracks > 0 && num_tracks == num_audio_tracks ? BOOL_PROP_TRUE : BOOL_PROP_FALSE;
+}
+
 #define FILTER_OPTION_BOOL(property, config) \
     { FILTER_OPTION_TYPE_BOOL, { property }, config, CFG_BOOL(config, cfg_false, CFGF_NODEFAULT) }
 
@@ -44,7 +68,7 @@ typedef struct {
 #define FILTER_OPTION_CUSTOM(match_func, free_func, cookie, config) \
     { FILTER_OPTION_TYPE_CUSTOM, custom: { match_func, free_func, cookie }, config, CFG_BOOL(config, cfg_false, CFGF_NODEFAULT) }
 
-#define NUM_FILTER_OPTIONS 10
+#define NUM_FILTER_OPTIONS 12
 static filter_option filter_options[NUM_FILTER_OPTIONS] = {
     FILTER_OPTION_BOOL("DeviceIsRemovable", "removable"),
     FILTER_OPTION_BOOL("DeviceIsReadOnly", "read_only"),
@@ -55,7 +79,9 @@ static filter_option filter_options[NUM_FILTER_OPTIONS] = {
     FILTER_OPTION_STRING("IdUsage", "usage"),
     FILTER_OPTION_STRING("IdType", "type"),
     FILTER_OPTION_STRING("IdUuid", "uuid"),
-    FILTER_OPTION_STRING("IdLabel", "label")
+    FILTER_OPTION_STRING("IdLabel", "label"),
+    FILTER_OPTION_CUSTOM(&custom_optical_disc_has_audio_tracks, NULL, NULL, "optical_disc_has_audio_tracks"),
+    FILTER_OPTION_CUSTOM(&custom_optical_disc_has_audio_tracks_only, NULL, NULL, "optical_disc_has_audio_tracks_only")
 };
 
 #undef FILTER_OPTION_BOOL
