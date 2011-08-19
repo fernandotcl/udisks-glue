@@ -91,6 +91,11 @@ void property_cache_free(property_cache *cache)
     g_free(cache);
 }
 
+void property_cache_purge(property_cache *cache)
+{
+    g_hash_table_remove_all(cache->entries);
+}
+
 #define IMPLEMENT_GET_NUMBER_PROPERTY_CACHED(c_type, name) \
     c_type get_##name##_property_cached(property_cache *cache, DBusGProxy *proxy, const char *name, const char *interface, int *success) \
     { \

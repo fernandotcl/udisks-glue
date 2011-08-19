@@ -26,6 +26,7 @@ struct tracked_object_ {
     gchar *device_file;
     gchar *mount_point;
     match *match_obj;
+    int match_obj_loaded;
 };
 
 tracked_object *tracked_object_create(const char *object_path)
@@ -51,6 +52,7 @@ tracked_object *tracked_object_create(const char *object_path)
 
     // Get a weak reference to the match object
     tobj->match_obj = matches_find_match(tobj->props_proxy, tobj->props_cache);
+    tobj->match_obj_loaded = 1;
 
     return tobj;
 }
@@ -72,6 +74,22 @@ void tracked_object_free(tracked_object *tobj)
         g_free(tobj->mount_point);
 
     g_free(tobj);
+}
+
+void tracked_object_purge_cache(tracked_object *tobj)
+{
+    // Purge the properties cache
+    property_cache_purge(tobj->props_cache);
+
+    // Get rid of the mount point
+    if (tobj->mount_point) {
+        g_free(tobj->mount_point);
+        tobj->mount_point = NULL;
+    }
+
+    // Unload the match object
+    tobj->match_obj_loaded = 0;
+    tobj->match_obj = NULL;
 }
 
 tracked_object_status tracked_object_get_status(tracked_object *tobj)
@@ -123,28 +141,46 @@ gchar *tracked_object_get_string_property(tracked_object *tobj, const char *name
         return get_string_property(tobj->props_proxy, name, DBUS_INTERFACE_UDISKS_DEVICE);
 }
 
+#define LOAD_MATCH_OBJ \
+    do { \
+        if (!tobj->match_obj_loaded) { \
+            tobj->match_obj = matches_find_match(tobj->props_proxy, tobj->props_cache); \
+            tobj->match_obj_loaded = 1; \
+        } \
+        if (!tobj->match_obj) \
+            return NULL; \
+    } while (0)
+
 const char *tracked_object_get_post_insertion_command(tracked_object *tobj)
 {
-    return tobj->match_obj ? match_get_post_insertion_command(tobj->match_obj) : NULL;
+    LOAD_MATCH_OBJ;
+    return match_get_post_insertion_command(tobj->match_obj);
 }
 
 const char *tracked_object_get_post_mount_command(tracked_object *tobj)
 {
-    return tobj->match_obj ? match_get_post_mount_command(tobj->match_obj) : NULL;
+    LOAD_MATCH_OBJ;
+    return match_get_post_mount_command(tobj->match_obj);
 }
 
 const char *tracked_object_get_post_unmount_command(tracked_object *tobj)
 {
-    return tobj->match_obj ? match_get_post_unmount_command(tobj->match_obj) : NULL;
+    LOAD_MATCH_OBJ;
+    return match_get_post_unmount_command(tobj->match_obj);
 }
 
 const char *tracked_object_get_post_removal_command(tracked_object *tobj)
 {
-    return tobj->match_obj ? match_get_post_removal_command(tobj->match_obj) : NULL;
+    LOAD_MATCH_OBJ;
+    return match_get_post_removal_command(tobj->match_obj);
 }
 
 void tracked_object_automount_if_needed(tracked_object *tobj)
 {
+    if (!tobj->match_obj_loaded) {
+        tobj->match_obj = matches_find_match(tobj->props_proxy, tobj->props_cache);
+        tobj->match_obj_loaded = 1;
+    }
     if (!tobj->match_obj || !match_get_automount(tobj->match_obj))
         return;
 

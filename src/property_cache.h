@@ -19,6 +19,8 @@ typedef struct property_cache_ property_cache;
 property_cache *property_cache_create();
 void property_cache_free(property_cache *property_cache);
 
+void property_cache_purge(property_cache *cache);
+
 int16_t get_int16_property_cached(property_cache *cache, DBusGProxy *proxy, const char *name, const char *interface, int *success);
 int32_t get_int32_property_cached(property_cache *cache, DBusGProxy *proxy, const char *name, const char *interface, int *success);
 int64_t get_int64_property_cached(property_cache *cache, DBusGProxy *proxy, const char *name, const char *interface, int *success);

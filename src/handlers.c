@@ -170,6 +170,12 @@ void device_added_signal_handler(DBusGProxy *proxy, const char *object_path, gpo
         tracked_object_set_status(tobj, TRACKED_OBJECT_STATUS_INSERTED);
         post_insertion_procedure(tobj);
     }
+
+    // For a removable device with no media, purge the cache so that the filters
+    // will be matched again when media is inserted
+    else {
+        tracked_object_purge_cache(tobj);
+    }
 }
 
 void device_changed_signal_handler(DBusGProxy *proxy, const char *object_path, gpointer user_data)
@@ -205,6 +211,7 @@ void device_changed_signal_handler(DBusGProxy *proxy, const char *object_path, g
             else if (!is_media_available) {
                 tracked_object_set_status(tobj, TRACKED_OBJECT_STATUS_NO_MEDIA);
                 post_removal_procedure(tobj);
+                tracked_object_purge_cache(tobj);
             }
             break;
 
