@@ -22,7 +22,7 @@ typedef enum {
 typedef struct tracked_object_ tracked_object;
 
 tracked_object *tracked_object_create(const char *object_path);
-void tracked_object_free();
+void tracked_object_free(tracked_object *tobj);
 
 void tracked_object_purge_cache(tracked_object *tobj);
 
