@@ -140,6 +140,7 @@ static int parse_config(int argc, char **argv, int *rc)
         }
 
         fprintf(fpidfile, "%d\n", getpid());
+        fflush(fpidfile);
     }
 
     if (do_daemonize)
