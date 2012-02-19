@@ -36,6 +36,15 @@ Configuration
 
 For configuration options and examples, please refer to udisks-glue(1).
 
+In most cases, you don't want to run udisks-glue as root. udisks-glue uses
+udisks to mount devices, and udisks uses PolicyKit to tell whether or not an
+user can mount a specific device. Depending on how your distribution sets up
+PolicyKit, you might have to add a local policy to allow you to mount devices,
+or maybe you can simply make sure you have a local and active ConsoleKit
+session (e.g., by using a display manager that is ConsoleKit-aware). If you
+can use udisks to mount devices (e.g. with "udisks --mount"), then udisks-glue
+should be able to mount devices too even if not run as root.
+
 
 Future goals
 ============
