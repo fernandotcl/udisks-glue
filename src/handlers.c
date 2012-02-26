@@ -133,6 +133,8 @@ void device_added_signal_handler(DBusGProxy *proxy, const char *object_path, gpo
 
     // Create the tracked object
     tracked_object *tobj = tracked_object_create(object_path);
+    if (!tobj)
+        return;
 
     // Skip system internal devices
     int is_system_internal = tracked_object_get_bool_property(tobj, "DeviceIsSystemInternal", 0);
