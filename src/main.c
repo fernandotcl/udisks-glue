@@ -62,8 +62,8 @@ static int parse_config(int argc, char **argv, int *rc)
     const char *config_file = NULL;
     const char *pidfile = NULL;
 
-    int opt, option_index = 0;
-    while ((opt = getopt_long(argc, argv, "c:fhp:s", long_options, &option_index)) != EOF) {
+    int opt;
+    while ((opt = getopt_long(argc, argv, "c:fhp:s", long_options, NULL)) != EOF) {
         switch ((char)opt) {
             case 'c':
                 config_file = optarg;
