@@ -66,7 +66,7 @@ static int custom_optical_disc_has_audio_tracks_only(DBusGProxy *proxy, property
     { FILTER_OPTION_TYPE_STRING, { property }, config, CFG_STR(config, NULL, CFGF_NODEFAULT) }
 
 #define FILTER_OPTION_CUSTOM(match_func, free_func, cookie, config) \
-    { FILTER_OPTION_TYPE_CUSTOM, { custom: { match_func, free_func, cookie } }, config, CFG_BOOL(config, cfg_false, CFGF_NODEFAULT) }
+    { FILTER_OPTION_TYPE_CUSTOM, { .custom = { match_func, free_func, cookie } }, config, CFG_BOOL(config, cfg_false, CFGF_NODEFAULT) }
 
 #define NUM_FILTER_OPTIONS 12
 static filter_option filter_options[NUM_FILTER_OPTIONS] = {
