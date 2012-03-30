@@ -78,7 +78,7 @@ static void cache_value_free(cache_value *value)
     g_free(value);
 }
 
-property_cache *property_cache_create()
+property_cache *property_cache_create(void)
 {
     property_cache *cache = g_malloc(sizeof(property_cache));
     cache->entries = g_hash_table_new_full(&g_str_hash, &g_str_equal, &g_free, (GDestroyNotify)&cache_value_free);

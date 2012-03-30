@@ -60,7 +60,7 @@ void match_free(match *m)
     g_free(m);
 }
 
-cfg_opt_t *match_get_cfg_opts()
+cfg_opt_t *match_get_cfg_opts(void)
 {
     static cfg_opt_t opts[] = {
         CFG_BOOL("automount", cfg_false, CFGF_NONE),

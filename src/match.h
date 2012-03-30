@@ -21,7 +21,7 @@ typedef struct match_ match;
 match *match_create(cfg_t *sec, filter *f);
 void match_free(match *m);
 
-cfg_opt_t *match_get_cfg_opts();
+cfg_opt_t *match_get_cfg_opts(void);
 void match_free_cfg_opts(cfg_opt_t *opts);
 
 int match_matches(match *m, DBusGProxy *proxy, property_cache *cache);

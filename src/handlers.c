@@ -120,7 +120,7 @@ int handlers_init(DBusGProxy *proxy)
     return load_devices(proxy);
 }
 
-void handlers_free()
+void handlers_free(void)
 {
     if (tracked_objects)
         g_hash_table_destroy(tracked_objects);

@@ -49,7 +49,7 @@ void run_command(const char *command)
     wait(NULL);
 }
 
-void daemonize()
+void daemonize(void)
 {
     pid_t pid;
     if ((pid = fork()) != 0) {
@@ -75,7 +75,7 @@ void daemonize()
     }
 }
 
-void close_descriptors()
+void close_descriptors(void)
 {
     for (int i = 0; i < 3; ++i)
         close(i);
@@ -103,7 +103,7 @@ static int file_exists(const char *path)
     return stat(path, &s) == -1 ? 0 : 1;
 }
 
-const char *find_config_file()
+const char *find_config_file(void)
 {
     char *path;
     int res;

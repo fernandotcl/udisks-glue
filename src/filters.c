@@ -133,7 +133,7 @@ int filters_init(cfg_t *cfg)
     return 1;
 }
 
-void filters_free()
+void filters_free(void)
 {
     if (filters)
         g_hash_table_destroy(filters);
@@ -144,7 +144,7 @@ filter *filters_find_filter_by_name(const char *name)
     return g_hash_table_lookup(filters, name);
 }
 
-cfg_opt_t *filters_get_cfg_opts()
+cfg_opt_t *filters_get_cfg_opts(void)
 {
     cfg_opt_t *opts = malloc(sizeof(cfg_opt_t) * (NUM_FILTER_OPTIONS + 1));
     for (int i = 0; i < NUM_FILTER_OPTIONS; ++i)

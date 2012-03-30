@@ -15,7 +15,7 @@
 #include "property_cache.h"
 
 int matches_init(cfg_t *cfg);
-void matches_free();
+void matches_free(void);
 
 match *matches_find_match(DBusGProxy *proxy, property_cache *cache);
 

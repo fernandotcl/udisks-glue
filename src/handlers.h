@@ -13,7 +13,7 @@
 #include <dbus/dbus-glib.h>
 
 int handlers_init(DBusGProxy *proxy);
-void handlers_free();
+void handlers_free(void);
 
 void device_added_signal_handler(DBusGProxy *proxy, const char *object_path, gpointer user_data);
 void device_changed_signal_handler(DBusGProxy *proxy, const char *object_path, gpointer user_data);

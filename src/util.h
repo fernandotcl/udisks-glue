@@ -15,8 +15,8 @@
 
 gchar *str_replace(gchar *string, gchar *search, gchar *replacement);
 void run_command(const char *command);
-void daemonize();
-void close_descriptors();
-const char *find_config_file();
+void daemonize(void);
+void close_descriptors(void);
+const char *find_config_file(void);
 
 #endif

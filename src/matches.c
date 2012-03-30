@@ -41,7 +41,7 @@ int matches_init(cfg_t *cfg)
     return 1;
 }
 
-void matches_free()
+void matches_free(void)
 {
     g_slist_foreach(matches, (GFunc)match_free, NULL);
     if (default_match)

@@ -16,7 +16,7 @@
 
 typedef struct property_cache_ property_cache;
 
-property_cache *property_cache_create();
+property_cache *property_cache_create(void);
 void property_cache_free(property_cache *property_cache);
 
 void property_cache_purge(property_cache *cache);

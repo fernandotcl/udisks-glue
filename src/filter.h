@@ -17,7 +17,7 @@
 typedef struct filter_ filter;
 typedef int (*custom_filter)(DBusGProxy *, property_cache *, void *);
 
-filter *filter_create();
+filter *filter_create(void);
 void filter_free(filter *f);
 
 void filter_add_restriction_bool(filter *f, const char *property, int value);

@@ -111,7 +111,7 @@ static int restriction_matches(restriction *r, DBusGProxy *proxy, property_cache
     }
 }
 
-filter *filter_create()
+filter *filter_create(void)
 {
     return g_malloc0(sizeof(filter));
 }
