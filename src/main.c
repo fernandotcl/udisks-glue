@@ -168,7 +168,6 @@ int main(int argc, char **argv)
     signal(SIGTERM, signal_handler);
     signal(SIGQUIT, signal_handler);
 
-    g_type_init();
     loop = g_main_loop_new(NULL, FALSE);
 
     dbus_conn = dbus_g_bus_get(DBUS_BUS_SYSTEM, &error);
