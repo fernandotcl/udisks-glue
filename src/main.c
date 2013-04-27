@@ -168,6 +168,10 @@ int main(int argc, char **argv)
     signal(SIGTERM, signal_handler);
     signal(SIGQUIT, signal_handler);
 
+#if GLIB_VERSION_CUR_STABLE < GLIB_VERSION_2_36
+    /* g_type_init is deprecated after 2.36 */
+    g_type_init();
+#endif
     loop = g_main_loop_new(NULL, FALSE);
 
     dbus_conn = dbus_g_bus_get(DBUS_BUS_SYSTEM, &error);
