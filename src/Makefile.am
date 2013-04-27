@@ -26,7 +26,7 @@ udisks_glue_SOURCES = \
     util.h
 
 udisks_glue_CPPFLAGS = \
-    -std=c99 -D_GNU_SOURCE -Wall -Werror \
+    -std=c99 -D_GNU_SOURCE -Wall \
     -DSYSCONFDIR=\"$(sysconfdir)\" \
     $(GLIB_CFLAGS) \
     $(DBUS_GLIB_CFLAGS) \
